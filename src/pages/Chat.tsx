@@ -115,7 +115,11 @@ export default function Chat() {
     if (!selectedProvider) { toast.error("No models available. Ask an admin to add one."); return; }
 
     setSending(true);
+    setStreamPhase("generating");
     setInput("");
+    const formatTimer = setTimeout(() => {
+      setStreamPhase(prev => (prev === "generating" ? "formatting" : prev));
+    }, 1000);
 
     let convId = activeId;
     if (!convId) {
