@@ -126,6 +126,90 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          link: string | null
+          read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          read?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          admin_message: string | null
+          contact_email: string
+          created_at: string
+          date_of_birth: string
+          decline_reason: string | null
+          full_name: string
+          handled_by: string | null
+          id: string
+          payment_method: string
+          phone: string
+          plan: string
+          price_usd: number
+          status: Database["public"]["Enums"]["order_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_message?: string | null
+          contact_email: string
+          created_at?: string
+          date_of_birth: string
+          decline_reason?: string | null
+          full_name: string
+          handled_by?: string | null
+          id?: string
+          payment_method: string
+          phone: string
+          plan: string
+          price_usd: number
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_message?: string | null
+          contact_email?: string
+          created_at?: string
+          date_of_birth?: string
+          decline_reason?: string | null
+          full_name?: string
+          handled_by?: string | null
+          id?: string
+          payment_method?: string
+          phone?: string
+          plan?: string
+          price_usd?: number
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -187,6 +271,7 @@ export type Database = {
     }
     Enums: {
       app_role: "co_founder" | "admin" | "special" | "premium" | "member"
+      order_status: "pending" | "confirmed" | "declined" | "dumped"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -315,6 +400,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["co_founder", "admin", "special", "premium", "member"],
+      order_status: ["pending", "confirmed", "declined", "dumped"],
     },
   },
 } as const
