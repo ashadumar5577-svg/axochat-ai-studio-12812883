@@ -14,7 +14,22 @@ To attach a custom domain (e.g. `axox.com`):
 - Add the DNS records Lovable shows you at your registrar
 - Done — both `axochat-ai-studio.lovable.app` and your custom domain work
 
-## 2. GitHub + GitHub Pages
+## 2. GitHub + GitHub Pages — `axox.axonodes.fun` setup
+
+This repo is preconfigured to deploy to **axox.axonodes.fun**:
+- `.github/workflows/deploy.yml` builds and publishes on every push to `main`
+- `public/CNAME` tells GitHub Pages to serve the site on `axox.axonodes.fun`
+- `dist/404.html` provides SPA fallback (handled in the workflow)
+
+### DNS — add this record at your `axonodes.fun` registrar:
+
+| Type  | Host   | Value                              |
+|-------|--------|------------------------------------|
+| CNAME | `axox` | `<your-github-username>.github.io` |
+
+After DNS propagates (a few minutes to an hour), GitHub will auto-issue HTTPS.
+
+### Generic GitHub Pages setup
 
 GitHub Pages serves static files, so a simple Action builds the Vite bundle
 and publishes it.
