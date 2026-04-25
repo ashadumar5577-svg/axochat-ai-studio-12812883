@@ -340,7 +340,12 @@ export default function Chat() {
                   </div>
                   <div className="flex-1 pt-1 prose prose-invert prose-sm max-w-none prose-pre:bg-secondary prose-pre:border prose-pre:border-border">
                     {m.role === "assistant" && !m.content && sending ? (
-                      <span className="text-muted-foreground text-sm">Thinking<span className="cursor-blink"></span></span>
+                      <span className="inline-flex items-center gap-2 text-muted-foreground text-sm">
+                        {streamPhase === "formatting" ? "Formatting reply" : "Generating reply"}
+                        <span className="inline-flex items-center">
+                          <span className="status-dot" /><span className="status-dot" /><span className="status-dot" />
+                        </span>
+                      </span>
                     ) : (
                       <ReactMarkdown>{m.content}</ReactMarkdown>
                     )}
