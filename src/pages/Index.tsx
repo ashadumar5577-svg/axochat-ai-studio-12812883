@@ -6,6 +6,7 @@ import { useTheme } from "@/hooks/useTheme";
 
 const Index = () => {
   const { user } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -25,7 +26,10 @@ const Index = () => {
           <a href="#models" className="hover:text-foreground transition-colors">Models</a>
           <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
         </nav>
-        <div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
           {user ? (
             <Button asChild variant="default" className="rounded-full bg-foreground text-background hover:bg-foreground/90"><Link to="/chat">Open chat</Link></Button>
           ) : (
