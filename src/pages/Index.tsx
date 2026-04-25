@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Zap, Shield, Users, MessageSquare, Settings2, Terminal } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, Shield, Users, MessageSquare, Settings2, Terminal, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 
 const Index = () => {
   const { user } = useAuth();
