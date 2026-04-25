@@ -178,6 +178,7 @@ export default function Chat() {
             const p = JSON.parse(json);
             const c = p.choices?.[0]?.delta?.content;
             if (c) {
+              if (!assistant) setStreamPhase("streaming");
               assistant += c;
               setMessages(prev => {
                 const copy = [...prev];
@@ -195,6 +196,8 @@ export default function Chat() {
       console.error(e);
       if (!["rate", "credits"].includes(e.message)) toast.error("Something went wrong");
     } finally {
+      clearTimeout(formatTimer);
+      setStreamPhase("idle");
       setSending(false);
     }
   };
