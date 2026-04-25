@@ -106,7 +106,7 @@
   html, body, #root { height: 100%; }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Sora', 'Inter', system-ui, sans-serif;
     background: var(--gradient-bg);
   }
   ::selection { background: hsl(var(--primary) / 0.35); color: hsl(var(--foreground)); }
