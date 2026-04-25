@@ -95,7 +95,25 @@
 
   @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
   .cursor-blink::after {
-    content: '▍'; margin-left: 2px; color: hsl(var(--primary));
+    content: '▍'; margin-left: 2px; color: hsl(var(--muted-foreground));
     animation: blink 1s steps(2) infinite;
   }
+
+  /* Streaming status: subtle dot pulse, no orange bar */
+  @keyframes status-dot {
+    0%, 100% { opacity: 0.25; transform: translateY(0); }
+    50%      { opacity: 1;    transform: translateY(-2px); }
+  }
+  .status-dot { display: inline-block; width: 4px; height: 4px; border-radius: 999px;
+    background: hsl(var(--muted-foreground)); margin: 0 2px;
+    animation: status-dot 1.2s ease-in-out infinite; }
+  .status-dot:nth-child(2) { animation-delay: 0.15s; }
+  .status-dot:nth-child(3) { animation-delay: 0.30s; }
+
+  /* Smooth incoming token fade — no jumpy reflow */
+  @keyframes token-in { from { opacity: 0; } to { opacity: 1; } }
+  .stream-text { animation: token-in 0.18s ease-out both; }
+
+  /* Hide any default top progress bar (just in case) */
+  #nprogress, .top-progress { display: none !important; }
 }
