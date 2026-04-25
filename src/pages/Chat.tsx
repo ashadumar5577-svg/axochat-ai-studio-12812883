@@ -331,14 +331,18 @@ export default function Chat() {
               </>)}
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
 
-          {activeId && (
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={toggleTheme} aria-label="Toggle theme">
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            {activeId && (<>
               <Button variant="ghost" size="sm" onClick={() => shareChat(activeId)}><Share2 className="h-3.5 w-3.5" /></Button>
               <Button variant="ghost" size="sm" onClick={exportChat}><Download className="h-3.5 w-3.5" /></Button>
               <Button variant="ghost" size="sm" onClick={() => deleteChat(activeId)}><Trash2 className="h-3.5 w-3.5" /></Button>
-            </div>
-          )}
+            </>)}
+          </div>
         </header>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
