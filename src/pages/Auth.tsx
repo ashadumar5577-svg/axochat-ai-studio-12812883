@@ -41,7 +41,7 @@ const Auth = () => {
         if (error) throw error;
         toast.success("Welcome to AxoX!");
       } else {
-        const { error } = await supabase.auth.signInWithPassword(parsed.data);
+        const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
         if (error) throw error;
       }
     } catch (err: any) {
