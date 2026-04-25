@@ -1,5 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&display=swap');
 
+@font-face {
+  font-family: 'Glacial Indifference';
+  src: url('https://cdn.jsdelivr.net/gh/coollabsio/fonts@main/fonts/glacial-indifference/GlacialIndifference-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Glacial Indifference';
+  src: url('https://cdn.jsdelivr.net/gh/coollabsio/fonts@main/fonts/glacial-indifference/GlacialIndifference-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Glacial Indifference';
+  src: url('https://cdn.jsdelivr.net/gh/coollabsio/fonts@main/fonts/glacial-indifference/GlacialIndifference-Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -106,7 +128,7 @@
   html, body, #root { height: 100%; }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Sora', 'Inter', system-ui, sans-serif;
+    font-family: 'Glacial Indifference', 'Sora', 'Inter', system-ui, sans-serif;
     background: var(--gradient-bg);
   }
   ::selection { background: hsl(var(--primary) / 0.35); color: hsl(var(--foreground)); }
