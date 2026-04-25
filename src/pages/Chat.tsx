@@ -150,18 +150,48 @@ export default function Chat() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ providerId: selectedProvider.id, messages: newMsgs }),
-      });
 
+      // Retry with exponential backoff for transient 404/5xx/network errors
+      const maxAttempts = 3;
+      let resp: Response | null = null;
+      let lastErr: any = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          resp = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ providerId: selectedProvider.id, messages: newMsgs }),
+          });
+          if (resp.status === 429 || resp.status === 402) break; // don't retry quota
+          if (resp.ok) break;
+          // transient (404 cold-start, 5xx, 408)
+          if ([404, 408, 500, 502, 503, 504].includes(resp.status) && attempt < maxAttempts) {
+            if (attempt === 1) toast.message("Server Busy (404) — retrying…");
+            await new Promise(r => setTimeout(r, 700 * attempt));
+            continue;
+          }
+          break;
+        } catch (netErr) {
+          lastErr = netErr;
+          if (attempt < maxAttempts) {
+            if (attempt === 1) toast.message("Network hiccup — retrying…");
+            await new Promise(r => setTimeout(r, 700 * attempt));
+            continue;
+          }
+          throw netErr;
+        }
+      }
+
+      if (!resp) throw lastErr ?? new Error("No response");
       if (resp.status === 429) { toast.error("Rate limit. Slow down a touch."); throw new Error("rate"); }
       if (resp.status === 402) { toast.error("Out of credits."); throw new Error("credits"); }
-      if (!resp.ok || !resp.body) throw new Error("Failed to stream");
+      if (!resp.ok || !resp.body) {
+        toast.error(`Server Busy (${resp.status}). Please try again in a moment.`);
+        throw new Error("server-busy");
+      }
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -197,11 +227,33 @@ export default function Chat() {
         }
       }
 
-      await supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: assistant });
+      if (assistant) {
+        await supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: assistant });
+      } else {
+        // Empty stream — show recoverable message instead of leaving blank bubble
+        setMessages(prev => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content: "_Server Busy — no reply received. Please send your message again._" };
+          return copy;
+        });
+      }
       loadConversations();
     } catch (e: any) {
       console.error(e);
-      if (!["rate", "credits"].includes(e.message)) toast.error("Something went wrong");
+      if (!["rate", "credits", "server-busy"].includes(e.message)) {
+        toast.error("Server Busy. Please try again.");
+      }
+      // Replace empty assistant bubble with recoverable note
+      setMessages(prev => {
+        if (!prev.length) return prev;
+        const last = prev[prev.length - 1];
+        if (last.role === "assistant" && !last.content) {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content: "_Server Busy — please retry your message._" };
+          return copy;
+        }
+        return prev;
+      });
     } finally {
       clearTimeout(formatTimer);
       setStreamPhase("idle");
