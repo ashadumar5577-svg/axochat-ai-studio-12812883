@@ -215,14 +215,29 @@ export default function Chat() {
   if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="h-screen flex bg-background relative overflow-hidden">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-background/60 backdrop-blur-sm z-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-72 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
-        <div className="p-4 flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-warm flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
+      <aside
+        className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative fixed inset-y-0 left-0 z-40 w-72 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col transition-transform duration-300 ease-out ${sidebarOpen ? "md:translate-x-0" : "md:-ml-72"}`}
+      >
+        <div className="p-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-warm flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="font-semibold">Axo<span className="text-gradient">X</span></span>
           </div>
-          <span className="font-semibold">Axo<span className="text-gradient">X</span></span>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarOpen(false)} aria-label="Hide sidebar">
+            <PanelLeftClose className="h-4 w-4" />
+          </Button>
         </div>
 
         <div className="px-3">
