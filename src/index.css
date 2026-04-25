@@ -141,7 +141,8 @@
 }
 
 @layer utilities {
-  .font-serif { font-family: 'Instrument Serif', serif; font-weight: 400; }
+  /* Brand uses Glacial Indifference everywhere — keep .font-serif as an alias so old usages stay on-brand */
+  .font-serif { font-family: 'Glacial Indifference', 'Sora', 'Inter', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.01em; }
   .text-gradient {
     background: var(--gradient-warm);
     -webkit-background-clip: text;
