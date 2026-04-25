@@ -41,12 +41,14 @@ const Index = () => {
           <a href="#about" className="hover:text-foreground transition-colors">About</a>
           <a href="#features" className="hover:text-foreground transition-colors">Features</a>
           <a href="#models" className="hover:text-foreground transition-colors">Models</a>
-          <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
+          <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <a href="#founders" className="hover:text-foreground transition-colors">Team</a>
         </nav>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={toggleTheme} aria-label="Toggle theme">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
+          {user && <NotificationBell />}
           {user ? (
             <Button asChild variant="default" className="rounded-full bg-foreground text-background hover:bg-foreground/90"><Link to="/chat">Open chat</Link></Button>
           ) : (
