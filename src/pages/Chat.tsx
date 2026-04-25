@@ -40,6 +40,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [streamPhase, setStreamPhase] = useState<"idle" | "generating" | "formatting" | "streaming">("idle");
   const [search, setSearch] = useState("");
   const [profile, setProfile] = useState<any>(null);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
