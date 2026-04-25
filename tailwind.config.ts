@@ -8,7 +8,7 @@ export default {
     container: { center: true, padding: "1.5rem", screens: { "2xl": "1320px" } },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Glacial Indifference', 'Inter', 'system-ui', 'sans-serif'],
         serif: ['"Instrument Serif"', 'serif'],
       },
       colors: {
