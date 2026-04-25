@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, Plus, Sparkles, Trash2, Crown, Shield, Star, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { AdminOrders } from "@/components/AdminOrders";
 
 const ROLES = ["co_founder", "admin", "special", "premium", "member"] as const;
 
@@ -120,7 +121,12 @@ export default function Admin() {
           <TabsList>
             <TabsTrigger value="models">Models</TabsTrigger>
             <TabsTrigger value="users">Users & Roles</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="orders" className="mt-6">
+            <AdminOrders />
+          </TabsContent>
 
           <TabsContent value="models" className="mt-6">
             <div className="flex items-center justify-between mb-6">
