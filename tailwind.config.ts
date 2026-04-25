@@ -9,7 +9,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Glacial Indifference', 'Inter', 'system-ui', 'sans-serif'],
-        serif: ['"Instrument Serif"', 'serif'],
+        serif: ['Glacial Indifference', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
