@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MessageSquare, Send, Sparkles, Trash2, Share2, Download, ChevronDown, Settings, LogOut, Crown, Zap, Code, Lightbulb, FileText, Wand2 } from "lucide-react";
+import { Plus, Search, MessageSquare, Send, Sparkles, Trash2, Share2, Download, ChevronDown, Settings, LogOut, Crown, Zap, Code, Lightbulb, FileText, Wand2, PanelLeftClose, PanelLeftOpen, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Conversation { id: string; title: string; model_id: string | null; share_token: string | null; updated_at: string; }
 interface Message { id?: string; role: "user" | "assistant"; content: string; }
@@ -33,7 +34,12 @@ const roleBadge = (roles: string[]) => {
 
 export default function Chat() {
   const { user, loading, roles, isAdmin, signOut } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.innerWidth >= 768;
+  });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -209,14 +215,29 @@ export default function Chat() {
   if (loading) return <div className="min-h-screen grid place-items-center text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="h-screen flex bg-background relative overflow-hidden">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-background/60 backdrop-blur-sm z-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-72 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
-        <div className="p-4 flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-warm flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
+      <aside
+        className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:relative fixed inset-y-0 left-0 z-40 w-72 shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col transition-transform duration-300 ease-out ${sidebarOpen ? "md:translate-x-0" : "md:-ml-72"}`}
+      >
+        <div className="p-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-warm flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="font-semibold">Axo<span className="text-gradient">X</span></span>
           </div>
-          <span className="font-semibold">Axo<span className="text-gradient">X</span></span>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSidebarOpen(false)} aria-label="Hide sidebar">
+            <PanelLeftClose className="h-4 w-4" />
+          </Button>
         </div>
 
         <div className="px-3">
@@ -277,7 +298,13 @@ export default function Chat() {
 
       {/* Main */}
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border flex items-center justify-between px-5 shrink-0">
+        <header className="h-14 border-b border-border flex items-center justify-between px-3 md:px-5 shrink-0 gap-2">
+          <div className="flex items-center gap-2">
+            {!sidebarOpen && (
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setSidebarOpen(true)} aria-label="Show sidebar">
+                <PanelLeftOpen className="h-4 w-4" />
+              </Button>
+            )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="rounded-lg gap-2">
@@ -304,14 +331,18 @@ export default function Chat() {
               </>)}
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
 
-          {activeId && (
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={toggleTheme} aria-label="Toggle theme">
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            {activeId && (<>
               <Button variant="ghost" size="sm" onClick={() => shareChat(activeId)}><Share2 className="h-3.5 w-3.5" /></Button>
               <Button variant="ghost" size="sm" onClick={exportChat}><Download className="h-3.5 w-3.5" /></Button>
               <Button variant="ghost" size="sm" onClick={() => deleteChat(activeId)}><Trash2 className="h-3.5 w-3.5" /></Button>
-            </div>
-          )}
+            </>)}
+          </div>
         </header>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
