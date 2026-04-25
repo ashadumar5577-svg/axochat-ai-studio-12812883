@@ -12,6 +12,7 @@ import { Plus, Search, MessageSquare, Send, Sparkles, Trash2, Share2, Download, 
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "@/hooks/useTheme";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface Conversation { id: string; title: string; model_id: string | null; share_token: string | null; updated_at: string; }
 interface Message { id?: string; role: "user" | "assistant"; content: string; }
@@ -334,6 +335,7 @@ export default function Chat() {
           </div>
 
           <div className="flex items-center gap-1">
+            <NotificationBell />
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={toggleTheme} aria-label="Toggle theme">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>

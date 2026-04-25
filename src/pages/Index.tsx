@@ -1,12 +1,29 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Zap, Shield, Users, MessageSquare, Settings2, Terminal, Sun, Moon } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, Shield, Users, MessageSquare, Settings2, Terminal, Sun, Moon, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { PurchaseFlow, type Plan } from "@/components/PurchaseFlow";
+import { NotificationBell } from "@/components/NotificationBell";
+
+const PLANS: (Plan & { tagline: string; features: string[]; highlight?: boolean })[] = [
+  { id: "free", name: "Free", price: 0, tagline: "Get started", features: ["AxoX Free model", "Groq GPT‑OSS 20B", "5 vision msgs/day (Llama 3.3 70B)", "3 image uploads/day"] },
+  { id: "pro", name: "Axo Pro", price: 12, tagline: "For power users", highlight: true, features: ["AxoX DeepSeek R1", "AxoX Qwen 2.5 14B", "Groq Llama 3.3 70B", "Groq Qwen 3 32B", "10 image uploads/day", "Unlimited chat"] },
+  { id: "plus", name: "Axo+", price: 30, tagline: "Everything, unlimited", features: ["Everything in Axo Pro", "Unlimited image uploads", "Priority routing", "Earliest model access", "Direct founder support"] },
+];
 
 const Index = () => {
   const { user } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
+  const navigate = useNavigate();
+  const [purchase, setPurchase] = useState<Plan | null>(null);
+
+  const startPurchase = (plan: Plan) => {
+    if (!user) { navigate("/auth?mode=signup"); return; }
+    if (plan.price === 0) { navigate("/chat"); return; }
+    setPurchase(plan);
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -24,12 +41,14 @@ const Index = () => {
           <a href="#about" className="hover:text-foreground transition-colors">About</a>
           <a href="#features" className="hover:text-foreground transition-colors">Features</a>
           <a href="#models" className="hover:text-foreground transition-colors">Models</a>
-          <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
+          <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <a href="#founders" className="hover:text-foreground transition-colors">Team</a>
         </nav>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={toggleTheme} aria-label="Toggle theme">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
+          {user && <NotificationBell />}
           {user ? (
             <Button asChild variant="default" className="rounded-full bg-foreground text-background hover:bg-foreground/90"><Link to="/chat">Open chat</Link></Button>
           ) : (
@@ -132,8 +151,66 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section id="pricing" className="relative z-10 container py-24">
+        <div className="text-xs text-muted-foreground tracking-wider mb-3">{"// Pricing"}</div>
+        <h2 className="font-serif text-4xl md:text-6xl leading-[1.05]">
+          Simple plans. <span className="text-muted-foreground/70">Honest pricing.</span>
+        </h2>
+        <p className="mt-4 text-muted-foreground max-w-lg">Start free forever. Upgrade when you need more power, more vision, more everything.</p>
+
+        <div className="grid md:grid-cols-3 gap-4 mt-12">
+          {PLANS.map(plan => (
+            <div key={plan.id} className={`rounded-2xl border p-7 flex flex-col ${plan.highlight ? "border-primary/50 bg-card shadow-glow" : "border-border bg-card/40"}`}>
+              {plan.highlight && (
+                <span className="self-start text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/15 text-primary mb-4">Most popular</span>
+              )}
+              <div className="font-serif text-3xl">{plan.name}</div>
+              <div className="text-xs text-muted-foreground mt-1">{plan.tagline}</div>
+              <div className="mt-5 flex items-baseline gap-1">
+                <span className="font-serif text-5xl">${plan.price}</span>
+                <span className="text-sm text-muted-foreground">/mo</span>
+              </div>
+              <ul className="mt-6 space-y-2.5 text-sm text-muted-foreground flex-1">
+                {plan.features.map(f => (
+                  <li key={f} className="flex gap-2 items-start">
+                    <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                onClick={() => startPurchase(plan)}
+                className={`mt-7 rounded-full ${plan.highlight ? "bg-foreground text-background hover:bg-foreground/90" : ""}`}
+                variant={plan.highlight ? "default" : "outline"}
+              >
+                {plan.price === 0 ? "Start free" : `Upgrade to ${plan.name}`}
+              </Button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Founders */}
+      <section id="founders" className="relative z-10 container py-24">
+        <div className="text-xs text-muted-foreground tracking-wider mb-3">{"// The team"}</div>
+        <h2 className="font-serif text-4xl md:text-6xl leading-[1.05]">Built by two.</h2>
+        <div className="grid md:grid-cols-2 gap-4 mt-12">
+          <div className="rounded-2xl border border-border bg-card/40 p-8">
+            <div className="text-[10px] tracking-widest text-muted-foreground">FOUNDER</div>
+            <div className="font-serif text-3xl mt-2">Ashad Umar</div>
+            <a href="mailto:ashad.umar355@gmail.com" className="text-sm text-muted-foreground mt-3 block hover:text-foreground transition-colors">ashad.umar355@gmail.com</a>
+          </div>
+          <div className="rounded-2xl border border-border bg-card/40 p-8">
+            <div className="text-[10px] tracking-widest text-muted-foreground">CO‑FOUNDER</div>
+            <div className="font-serif text-3xl mt-2">Mujtaba Javed</div>
+            <a href="mailto:ashad.umar355@gmail.com" className="text-sm text-muted-foreground mt-3 block hover:text-foreground transition-colors">ashad.umar355@gmail.com</a>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section id="faq" className="relative z-10 container py-24 text-center">
+      <section className="relative z-10 container py-24 text-center">
         <h2 className="font-serif text-5xl md:text-6xl">Ready when you are.</h2>
         <p className="mt-4 text-muted-foreground">Free forever. No card. No spam.</p>
         <div className="mt-8">
@@ -146,6 +223,8 @@ const Index = () => {
       <footer className="relative z-10 container py-10 text-center text-xs text-muted-foreground border-t border-border">
         © {new Date().getFullYear()} AxoX — quiet, fast, yours.
       </footer>
+
+      <PurchaseFlow plan={purchase} open={!!purchase} onOpenChange={(v) => !v && setPurchase(null)} />
     </div>
   );
 };
