@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MessageSquare, Send, Sparkles, Trash2, Share2, Download, ChevronDown, Settings, LogOut, Crown, Zap, Code, Lightbulb, FileText, Wand2 } from "lucide-react";
+import { Plus, Search, MessageSquare, Send, Sparkles, Trash2, Share2, Download, ChevronDown, Settings, LogOut, Crown, Zap, Code, Lightbulb, FileText, Wand2, PanelLeftClose, PanelLeftOpen, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Conversation { id: string; title: string; model_id: string | null; share_token: string | null; updated_at: string; }
 interface Message { id?: string; role: "user" | "assistant"; content: string; }
@@ -33,7 +34,12 @@ const roleBadge = (roles: string[]) => {
 
 export default function Chat() {
   const { user, loading, roles, isAdmin, signOut } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.innerWidth >= 768;
+  });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
