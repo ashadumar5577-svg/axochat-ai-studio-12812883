@@ -1,12 +1,29 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Zap, Shield, Users, MessageSquare, Settings2, Terminal, Sun, Moon } from "lucide-react";
+import { ArrowRight, Sparkles, Zap, Shield, Users, MessageSquare, Settings2, Terminal, Sun, Moon, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { PurchaseFlow, type Plan } from "@/components/PurchaseFlow";
+import { NotificationBell } from "@/components/NotificationBell";
+
+const PLANS: (Plan & { tagline: string; features: string[]; highlight?: boolean })[] = [
+  { id: "free", name: "Free", price: 0, tagline: "Get started", features: ["AxoX Free model", "Groq GPT‑OSS 20B", "5 vision msgs/day (Llama 3.3 70B)", "3 image uploads/day"] },
+  { id: "pro", name: "Axo Pro", price: 12, tagline: "For power users", highlight: true, features: ["AxoX DeepSeek R1", "AxoX Qwen 2.5 14B", "Groq Llama 3.3 70B", "Groq Qwen 3 32B", "10 image uploads/day", "Unlimited chat"] },
+  { id: "plus", name: "Axo+", price: 30, tagline: "Everything, unlimited", features: ["Everything in Axo Pro", "Unlimited image uploads", "Priority routing", "Earliest model access", "Direct founder support"] },
+];
 
 const Index = () => {
   const { user } = useAuth();
   const { theme, toggle: toggleTheme } = useTheme();
+  const navigate = useNavigate();
+  const [purchase, setPurchase] = useState<Plan | null>(null);
+
+  const startPurchase = (plan: Plan) => {
+    if (!user) { navigate("/auth?mode=signup"); return; }
+    if (plan.price === 0) { navigate("/chat"); return; }
+    setPurchase(plan);
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden">
