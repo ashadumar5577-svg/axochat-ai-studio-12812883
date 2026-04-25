@@ -12,6 +12,7 @@ import { Plus, Search, MessageSquare, Send, Sparkles, Trash2, Share2, Download, 
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "@/hooks/useTheme";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface Conversation { id: string; title: string; model_id: string | null; share_token: string | null; updated_at: string; }
 interface Message { id?: string; role: "user" | "assistant"; content: string; }
