@@ -36,11 +36,11 @@ Deno.serve(async (req) => {
     if (provErr || !provider) return json({ error: "Model not found" }, 404);
 
     const baseUrl = provider.base_url.replace(/\/$/, "");
+    // Detect Ollama-style by URL signature, not provider_type (axox can be either)
     const isOllama =
-      provider.provider_type === "axox" ||
       /\/api\/generate$/.test(baseUrl) ||
       /\/api$/.test(baseUrl) ||
-      /:11434/.test(baseUrl);
+      /:11434(\/|$)/.test(baseUrl);
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (provider.auth_header === "x-api-key") headers["X-API-Key"] = provider.api_key;
