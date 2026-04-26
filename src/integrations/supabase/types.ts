@@ -91,6 +91,60 @@ export type Database = {
           },
         ]
       }
+      github_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          github_username: string | null
+          scope: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          github_username?: string | null
+          scope?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          github_username?: string | null
+          scope?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ide_files: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -234,6 +288,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sandbox_sessions: {
+        Row: {
+          created_at: string
+          e2b_sandbox_id: string | null
+          ended_at: string | null
+          id: string
+          seconds_used: number
+          started_at: string
+          status: string
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          e2b_sandbox_id?: string | null
+          ended_at?: string | null
+          id?: string
+          seconds_used?: number
+          started_at?: string
+          status?: string
+          tier?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          e2b_sandbox_id?: string | null
+          ended_at?: string | null
+          id?: string
+          seconds_used?: number
+          started_at?: string
+          status?: string
+          tier?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -260,6 +350,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_sandbox_usage: {
+        Args: { _user_id: string }
+        Returns: {
+          day_seconds: number
+          week_seconds: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
