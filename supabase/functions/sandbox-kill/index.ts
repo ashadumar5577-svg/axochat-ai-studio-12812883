@@ -1,3 +1,4 @@
+import { Sandbox } from "npm:@e2b/code-interpreter@1.5.1";
 import { corsHeaders, jsonResponse, getUserAndAdmin } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
@@ -16,10 +17,10 @@ Deno.serve(async (req) => {
     if (!session) return jsonResponse({ error: "Sandbox not found" }, 404);
 
     const E2B_API_KEY = Deno.env.get("E2B_API_KEY")!;
-    await fetch(`https://api.e2b.dev/sandboxes/${sandboxId}`, {
-      method: "DELETE",
-      headers: { "X-API-Key": E2B_API_KEY },
-    }).catch(() => {});
+    try {
+      const sbx = await Sandbox.connect(sandboxId, { apiKey: E2B_API_KEY });
+      await sbx.kill();
+    } catch (e) { console.warn("kill warn", e); }
 
     const startedAt = new Date(session.started_at).getTime();
     const seconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
@@ -32,7 +33,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({ ok: true, seconds });
   } catch (e) {
-    console.error(e);
+    console.error("sandbox-kill error", e);
     return jsonResponse({ error: e instanceof Error ? e.message : "Unknown" }, 500);
   }
 });
