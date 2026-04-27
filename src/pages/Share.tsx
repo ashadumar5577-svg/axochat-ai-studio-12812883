@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import ReactMarkdown from "react-markdown";
+import { MessageContent } from "@/components/MessageContent";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -46,7 +46,7 @@ export default function Share() {
               <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs shrink-0 ${m.role === "user" ? "bg-secondary" : "bg-gradient-warm text-primary-foreground"}`}>
                 {m.role === "user" ? "U" : <Sparkles className="h-3.5 w-3.5" />}
               </div>
-              <div className="flex-1 prose prose-invert prose-sm max-w-none"><ReactMarkdown>{m.content}</ReactMarkdown></div>
+              <div className="flex-1 prose prose-invert prose-sm max-w-none"><MessageContent content={m.content} /></div>
             </div>
           ))}
         </div>
