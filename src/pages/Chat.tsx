@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, Search, MessageSquare, Send, Sparkles, Trash2, Share2, Download, ChevronDown, Settings, LogOut, Crown, Zap, Code, Lightbulb, FileText, Wand2, PanelLeftClose, PanelLeftOpen, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
-import ReactMarkdown from "react-markdown";
+import { MessageContent } from "@/components/MessageContent";
 import { useTheme } from "@/hooks/useTheme";
 import { NotificationBell } from "@/components/NotificationBell";
 
@@ -432,7 +432,7 @@ export default function Chat() {
                         </span>
                       </span>
                     ) : (
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                      <MessageContent content={m.content} />
                     )}
                   </div>
                 </div>

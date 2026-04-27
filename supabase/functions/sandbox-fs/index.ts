@@ -1,3 +1,4 @@
+import { Sandbox } from "npm:@e2b/code-interpreter@1.5.1";
 import { corsHeaders, jsonResponse, getUserAndAdmin } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
@@ -16,45 +17,23 @@ Deno.serve(async (req) => {
     if (!session) return jsonResponse({ error: "Sandbox not found" }, 404);
 
     const E2B_API_KEY = Deno.env.get("E2B_API_KEY")!;
-    const base = `https://api.e2b.dev/sandboxes/${sandboxId}/filesystem`;
+    const sbx = await Sandbox.connect(sandboxId, { apiKey: E2B_API_KEY });
 
     if (action === "read") {
-      const r = await fetch(`${base}/file?path=${encodeURIComponent(path)}`, {
-        headers: { "X-API-Key": E2B_API_KEY },
-      });
-      if (!r.ok) return jsonResponse({ error: `Read failed: ${r.status}` }, r.status);
-      const text = await r.text();
+      const text = await sbx.files.read(path);
       return jsonResponse({ content: text });
     }
-
     if (action === "write") {
-      const fd = new FormData();
-      fd.append("file", new Blob([content ?? ""], { type: "text/plain" }), path.split("/").pop() ?? "file");
-      fd.append("path", path);
-      const r = await fetch(`${base}/file`, {
-        method: "POST",
-        headers: { "X-API-Key": E2B_API_KEY },
-        body: fd,
-      });
-      if (!r.ok) {
-        const t = await r.text();
-        return jsonResponse({ error: `Write failed: ${t.slice(0, 200)}` }, 500);
-      }
+      await sbx.files.write(path, content ?? "");
       return jsonResponse({ ok: true });
     }
-
     if (action === "list") {
-      const r = await fetch(`${base}/list?path=${encodeURIComponent(path || "/home/user")}`, {
-        headers: { "X-API-Key": E2B_API_KEY },
-      });
-      if (!r.ok) return jsonResponse({ entries: [] });
-      const j = await r.json();
-      return jsonResponse({ entries: j });
+      const entries = await sbx.files.list(path || "/home/user");
+      return jsonResponse({ entries });
     }
-
     return jsonResponse({ error: "Unknown action" }, 400);
   } catch (e) {
-    console.error(e);
+    console.error("sandbox-fs error", e);
     return jsonResponse({ error: e instanceof Error ? e.message : "Unknown" }, 500);
   }
 });

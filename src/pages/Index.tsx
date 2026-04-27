@@ -41,6 +41,7 @@ const Index = () => {
           <a href="#about" className="hover:text-foreground transition-colors">About</a>
           <a href="#features" className="hover:text-foreground transition-colors">Features</a>
           <a href="#models" className="hover:text-foreground transition-colors">Models</a>
+          <Link to="/ide" className="hover:text-foreground transition-colors">IDE</Link>
           <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
           <a href="#founders" className="hover:text-foreground transition-colors">Team</a>
         </nav>
@@ -70,6 +71,9 @@ const Index = () => {
         <div className="mt-10 flex items-center justify-center gap-3 animate-fade-in-up">
           <Button asChild size="lg" className="rounded-full bg-foreground text-background hover:bg-foreground/90 px-6">
             <Link to={user ? "/chat" : "/auth?mode=signup"}>Start chatting</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="rounded-full px-6 gap-2">
+            <Link to={user ? "/ide" : "/auth?mode=signup"}><Terminal className="h-4 w-4" /> Open IDE</Link>
           </Button>
           <Button asChild variant="ghost" size="lg" className="rounded-full px-6">
             <a href="#features">Discover product <ArrowRight className="h-4 w-4 ml-1" /></a>
