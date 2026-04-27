@@ -132,6 +132,7 @@ export default function IDE() {
       setLimits(data.limits);
       log(`\x1b[32m✓ Sandbox ready: ${data.sandboxId}\x1b[0m`);
       log(`Tier: ${data.tier} | Weekly: ${data.limits.weekly ? Math.round(data.limits.weekly / 60) + "m" : "∞"} | Daily: ${data.limits.daily ? Math.round(data.limits.daily / 3600) + "h" : "∞"}`);
+      xtermRef.current?.write("\x1b[38;5;208m$\x1b[0m ");
     } catch (e: any) {
       log(`\x1b[31m✗ ${e.message}\x1b[0m`);
     } finally {
