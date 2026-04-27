@@ -42,7 +42,7 @@ export default function IDE() {
   const [ghUser, setGhUser] = useState<string | null>(null);
   const [agentLog, setAgentLog] = useState<string[]>([]);
 
-  // Init terminal
+  // Init terminal with interactive input
   useEffect(() => {
     if (!termRef.current || xtermRef.current) return;
     const term = new Terminal({
@@ -60,6 +60,29 @@ export default function IDE() {
     term.writeln("\x1b[38;5;208m╚═══════════════════════════════════════╝\x1b[0m");
     term.writeln("Click \x1b[38;5;208mStart Sandbox\x1b[0m to spin up your environment.");
     term.writeln("");
+
+    let line = "";
+    const prompt = () => term.write("\x1b[38;5;208m$\x1b[0m ");
+    term.onData((data) => {
+      for (const ch of data) {
+        const code = ch.charCodeAt(0);
+        if (code === 13) { // Enter
+          term.write("\r\n");
+          const cmd = line.trim();
+          line = "";
+          if (cmd) {
+            (window as any).__axoxRunCmd?.(cmd).finally(() => prompt());
+          } else {
+            prompt();
+          }
+        } else if (code === 127) { // Backspace
+          if (line.length > 0) { line = line.slice(0, -1); term.write("\b \b"); }
+        } else if (code >= 32) {
+          line += ch; term.write(ch);
+        }
+      }
+    });
+
     xtermRef.current = term;
     fitRef.current = fit;
     const onResize = () => fit.fit();
