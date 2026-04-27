@@ -252,7 +252,11 @@ export default function IDE() {
     }
   };
 
-  // GitHub
+  // Expose for terminal interactive input
+  useEffect(() => {
+    (window as any).__axoxRunCmd = runRawCommand;
+    return () => { delete (window as any).__axoxRunCmd; };
+  }, [sandboxId, session]);
   const connectGitHub = () => {
     if (!user) return;
     const clientId = "Ov23liBjHSmqHj4coBKF"; // public client id
