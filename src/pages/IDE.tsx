@@ -47,6 +47,7 @@ export default function IDE() {
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
   const cwdRef = useRef(HOME_DIR);
+  const sandboxIdRef = useRef<string | null>(null);
   const runningRef = useRef(false);
   const currentLineRef = useRef("");
 
@@ -80,6 +81,10 @@ export default function IDE() {
   }, [cwd]);
 
   useEffect(() => {
+    sandboxIdRef.current = sandboxId;
+  }, [sandboxId]);
+
+  useEffect(() => {
     runningRef.current = running;
   }, [running]);
 
@@ -100,7 +105,7 @@ export default function IDE() {
   }, []);
 
   const startSandbox = useCallback(async (showPrompt = true): Promise<string | null> => {
-    if (sandboxId) return sandboxId;
+    if (sandboxIdRef.current) return sandboxIdRef.current;
     if (!session?.access_token) {
       toast.error("Sign in first");
       return null;
@@ -118,6 +123,7 @@ export default function IDE() {
         return null;
       }
 
+      sandboxIdRef.current = data.sandboxId;
       setSandboxId(data.sandboxId);
       setTier(data.tier);
       setUsage(data.usage);
@@ -143,6 +149,7 @@ export default function IDE() {
     if (!sandboxId) return;
     appendActivity("\x1b[33m→ Stopping sandbox...\x1b[0m");
     await supabase.functions.invoke("sandbox-kill", { body: { sandboxId } });
+    sandboxIdRef.current = null;
     setSandboxId(null);
     setRunStatus("idle");
     appendActivity("\x1b[32m✓ Stopped\x1b[0m");
@@ -165,7 +172,7 @@ export default function IDE() {
       return { ok: true, stdout: "", stderr: "" };
     }
 
-    const activeSandboxId = sandboxId ?? await startSandbox(false);
+    const activeSandboxId = sandboxIdRef.current ?? await startSandbox(false);
     if (!activeSandboxId) return { ok: false, stdout: "", stderr: "Sandbox unavailable\n" };
 
     const isCdCommand = /^cd(?:\s+(.+))?$/.exec(trimmed);
@@ -371,7 +378,7 @@ export default function IDE() {
     const tab = tabs[activeTab];
     if (!tab) return;
 
-    const activeSandboxId = sandboxId ?? await startSandbox(false);
+    const activeSandboxId = sandboxIdRef.current ?? await startSandbox(false);
     if (!activeSandboxId) return;
 
     setBottomPanel("terminal");
