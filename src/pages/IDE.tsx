@@ -630,14 +630,15 @@ export default function IDE() {
 
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
         {!sandboxId ? (
-          <Button size="sm" onClick={() => startSandbox()} disabled={starting} variant="hero">
-            {starting ? <Loader2 className="animate-spin" /> : <Play />} Start Sandbox
+          <Button size="sm" onClick={() => setOsPickerOpen(true)} disabled={starting} variant="hero">
+            {starting ? <Loader2 className="animate-spin" /> : <Play />} New Environment
           </Button>
         ) : (
           <Button size="sm" onClick={stopSandbox} variant="destructive">
             <Square /> Stop
           </Button>
         )}
+        <span className="rounded-sm border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">{osTemplate}</span>
 
         <Button size="sm" onClick={runActiveFile} disabled={running || starting}>
           {running ? <Loader2 className="animate-spin" /> : <Play />} Run File
