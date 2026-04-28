@@ -678,7 +678,8 @@ export default function IDE() {
         <div className="flex w-12 shrink-0 flex-col items-center border-r border-border bg-card py-2">
           <button className="mb-2 rounded-sm bg-secondary p-2 text-primary" aria-label="Explorer"><Folder className="h-5 w-5" /></button>
           <button className="mb-2 rounded-sm p-2 text-muted-foreground hover:bg-secondary" aria-label="Terminal" onClick={() => setBottomPanel("terminal")}><TerminalIcon className="h-5 w-5" /></button>
-          <button className="rounded-sm p-2 text-muted-foreground hover:bg-secondary" aria-label="Output" onClick={() => setBottomPanel("output")}><PanelBottom className="h-5 w-5" /></button>
+          <button className="mb-2 rounded-sm p-2 text-muted-foreground hover:bg-secondary" aria-label="Output" onClick={() => setBottomPanel("output")}><PanelBottom className="h-5 w-5" /></button>
+          <button className={`rounded-sm p-2 ${rightPanel === "chat" ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-secondary"}`} aria-label="AI Chat" onClick={() => setRightPanel("chat")}><Bot className="h-5 w-5" /></button>
         </div>
 
         <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-background">
