@@ -758,35 +758,100 @@ export default function IDE() {
           </section>
         </main>
 
-        <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-background">
-          <div className="flex h-9 items-center gap-2 border-b border-border px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" /> Run Result
+        <aside className="flex w-96 shrink-0 flex-col border-l border-border bg-background">
+          <div className="flex h-9 shrink-0 items-center border-b border-border text-xs">
+            <button onClick={() => setRightPanel("chat")} className={`flex h-full items-center gap-2 px-3 ${rightPanel === "chat" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <Bot className="h-3.5 w-3.5" /> AxoX Copilot
+            </button>
+            <button onClick={() => setRightPanel("result")} className={`flex h-full items-center gap-2 px-3 ${rightPanel === "result" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <Sparkles className="h-3.5 w-3.5" /> Run Result
+            </button>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-xs">
-            <div className="rounded-sm border border-border bg-card p-3">
-              <div className="mb-2 flex items-center gap-2 font-semibold">{statusIcon}<span>{runStatus === "idle" ? "Ready" : runStatus}</span></div>
-              <div className="break-all font-mono text-muted-foreground">{lastCommand || "No command run yet"}</div>
-            </div>
 
-            {previewHtml && (
-              <div className="min-h-64 overflow-hidden rounded-sm border border-border bg-card">
-                <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">HTML Preview</div>
-                <iframe title="HTML preview" srcDoc={previewHtml} className="h-56 w-full bg-background" sandbox="allow-scripts" />
+          {rightPanel === "result" && (
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-xs">
+              <div className="rounded-sm border border-border bg-card p-3">
+                <div className="mb-2 flex items-center gap-2 font-semibold">{statusIcon}<span>{runStatus === "idle" ? "Ready" : runStatus}</span></div>
+                <div className="break-all font-mono text-muted-foreground">{lastCommand || "No command run yet"}</div>
               </div>
-            )}
-
-            <div className="min-h-40 rounded-sm border border-border bg-card">
-              <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">Latest Output</div>
-              <pre className="max-h-64 overflow-auto whitespace-pre-wrap p-3 font-mono text-xs text-foreground">{commandOutput || "Output and command results appear here."}</pre>
-            </div>
-
-            <div className="rounded-sm border border-border bg-card">
-              <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">Activity</div>
-              <div className="max-h-48 overflow-auto p-3 font-mono text-xs text-muted-foreground">
-                {agentLog.length === 0 ? "No activity yet." : agentLog.slice(-20).map((line, i) => <div key={`${line}-${i}`} className="break-words">{line}</div>)}
+              {resources && (
+                <div className="grid grid-cols-3 gap-2 rounded-sm border border-border bg-card p-3 text-center">
+                  <div><MemoryStick className="mx-auto h-4 w-4 text-primary" /><div className="mt-1 font-semibold">{resources.ramGb}GB</div><div className="text-muted-foreground">RAM</div></div>
+                  <div><Cpu className="mx-auto h-4 w-4 text-primary" /><div className="mt-1 font-semibold">{resources.vcpu}</div><div className="text-muted-foreground">vCPU</div></div>
+                  <div><HardDrive className="mx-auto h-4 w-4 text-primary" /><div className="mt-1 font-semibold">{resources.diskGb}GB</div><div className="text-muted-foreground">Disk</div></div>
+                </div>
+              )}
+              {previewHtml && (
+                <div className="min-h-64 overflow-hidden rounded-sm border border-border bg-card">
+                  <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">HTML Preview</div>
+                  <iframe title="HTML preview" srcDoc={previewHtml} className="h-56 w-full bg-background" sandbox="allow-scripts" />
+                </div>
+              )}
+              <div className="min-h-40 rounded-sm border border-border bg-card">
+                <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">Latest Output</div>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap p-3 font-mono text-xs text-foreground">{commandOutput || "Output appears here."}</pre>
+              </div>
+              <div className="rounded-sm border border-border bg-card">
+                <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">Activity</div>
+                <div className="max-h-48 overflow-auto p-3 font-mono text-xs text-muted-foreground">
+                  {agentLog.length === 0 ? "No activity yet." : agentLog.slice(-20).map((line, i) => <div key={`${line}-${i}`} className="break-words">{line}</div>)}
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {rightPanel === "chat" && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex-1 space-y-3 overflow-y-auto p-3 text-xs">
+                {chat.length === 0 && (
+                  <div className="rounded-md border border-border bg-card p-3 text-muted-foreground">
+                    <div className="mb-1 flex items-center gap-2 font-semibold text-foreground"><Bot className="h-4 w-4 text-primary" /> AxoX Copilot</div>
+                    Ask me to write code, create files, run commands, or fix bugs in your sandbox.
+                  </div>
+                )}
+                {chat.map((m, i) => (
+                  <div key={i} className={`rounded-md border p-3 ${m.role === "user" ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{m.role === "user" ? "You" : "Copilot"}</div>
+                    <div className="whitespace-pre-wrap text-foreground">{m.content}</div>
+                    {m.events && m.events.length > 0 && (
+                      <div className="mt-2 space-y-1 border-t border-border pt-2">
+                        {m.events.map((ev, j) => (
+                          <div key={j} className="font-mono text-[10px] text-muted-foreground">
+                            <span className="text-primary">⚡ {ev.name}</span>
+                            {ev.args?.path && <> · {ev.args.path}</>}
+                            {ev.args?.command && <> · {String(ev.args.command).slice(0, 60)}</>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {chatBusy && (
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-card p-3 text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking...
+                  </div>
+                )}
+              </div>
+              <div className="border-t border-border p-2">
+                <div className="flex items-end gap-2">
+                  <Textarea
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
+                    placeholder="Ask Copilot... (Enter to send)"
+                    className="min-h-[44px] resize-none text-xs"
+                    rows={2}
+                  />
+                  <Button size="sm" onClick={sendChat} disabled={chatBusy || !chatInput.trim()}>
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  {sandboxId ? "Connected to sandbox — Copilot can edit files & run commands" : "No sandbox — Copilot will only chat. Start an environment to enable tools."}
+                </div>
+              </div>
+            </div>
+          )}
         </aside>
       </div>
 
