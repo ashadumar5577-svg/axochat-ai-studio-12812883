@@ -39,6 +39,16 @@ const HOME_DIR = "/home/user";
 type FileTab = { path: string; content: string; dirty: boolean };
 type BottomPanel = "terminal" | "output" | "problems";
 type RunStatus = "idle" | "running" | "success" | "error";
+type RightPanel = "result" | "chat";
+type ChatMsg = { role: "user" | "assistant"; content: string; events?: { name: string; args: any; result: any }[] };
+
+const OS_OPTIONS = [
+  { id: "ubuntu-22.04", label: "Ubuntu 22.04 LTS", desc: "Default — broad compatibility" },
+  { id: "ubuntu-24.04", label: "Ubuntu 24.04 LTS", desc: "Latest Ubuntu" },
+  { id: "debian-12", label: "Debian 12", desc: "Stable Linux" },
+  { id: "node", label: "Node.js workspace", desc: "Pre-installed Node + npm" },
+  { id: "python", label: "Python workspace", desc: "Pre-installed Python 3" },
+];
 
 const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "");
 const toTerminalText = (value: string) => value.replace(/\r?\n/g, "\r\n");
