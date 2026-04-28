@@ -1,6 +1,23 @@
 import { Sandbox } from "npm:@e2b/code-interpreter@1.5.1";
 import { corsHeaders, jsonResponse, getUserAndAdmin } from "../_shared/auth.ts";
 
+const shellQuote = (value: string) => `'${String(value).replace(/'/g, "'\\''")}'`;
+
+async function walkTree(sbx: any, root: string, depth = 0, maxDepth = 4): Promise<any[]> {
+  if (depth > maxDepth) return [];
+  const entries = await sbx.files.list(root).catch(() => []);
+  const out: any[] = [];
+  for (const entry of entries) {
+    const name = entry.name || String(entry.path || "").split("/").pop();
+    if (!name || name.startsWith(".") || ["node_modules", "__pycache__", ".git"].includes(name)) continue;
+    const path = entry.path || `${root.replace(/\/$/, "")}/${name}`;
+    const type = entry.type === "dir" || entry.isDir ? "dir" : "file";
+    out.push({ path, name, type });
+    if (type === "dir") out.push(...await walkTree(sbx, path, depth + 1, maxDepth));
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -24,11 +41,20 @@ Deno.serve(async (req) => {
       return jsonResponse({ content: text });
     }
     if (action === "write") {
+      await sbx.commands.run(`mkdir -p $(dirname ${shellQuote(path)})`, { user: "root", timeoutMs: 10_000 }).catch(() => {});
       await sbx.files.write(path, content ?? "");
+      return jsonResponse({ ok: true });
+    }
+    if (action === "mkdir") {
+      await sbx.files.makeDir(path || "/home/user");
       return jsonResponse({ ok: true });
     }
     if (action === "list") {
       const entries = await sbx.files.list(path || "/home/user");
+      return jsonResponse({ entries });
+    }
+    if (action === "tree") {
+      const entries = await walkTree(sbx, path || "/home/user");
       return jsonResponse({ entries });
     }
     return jsonResponse({ error: "Unknown action" }, 400);
