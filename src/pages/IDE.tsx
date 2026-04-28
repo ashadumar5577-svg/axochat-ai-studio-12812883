@@ -24,7 +24,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Code2,
+  Bot,
+  Send,
+  Cpu,
+  HardDrive,
+  MemoryStick,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
