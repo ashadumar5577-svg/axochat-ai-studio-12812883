@@ -295,6 +295,20 @@ export default function IDE() {
     const trimmed = command.trim();
     if (!trimmed) return { ok: true, stdout: "", stderr: "" };
 
+    if (["sudo su", "sudo -i", "su", "su -", "sudo bash", "sudo sh"].includes(trimmed)) {
+      rootModeRef.current = true;
+      setRootMode(true);
+      xtermRef.current?.writeln("\x1b[32mSwitched to root command mode. Type exit to return to user.\x1b[0m");
+      return { ok: true, stdout: "", stderr: "" };
+    }
+
+    if (trimmed === "exit" && rootModeRef.current) {
+      rootModeRef.current = false;
+      setRootMode(false);
+      xtermRef.current?.writeln("\x1b[32mReturned to user mode.\x1b[0m");
+      return { ok: true, stdout: "", stderr: "" };
+    }
+
     if (trimmed === "clear" || trimmed === "cls") {
       xtermRef.current?.clear();
       setCommandOutput("");
@@ -356,7 +370,7 @@ export default function IDE() {
           Authorization: `Bearer ${session?.access_token}`,
           apikey: PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ sandboxId: activeSandboxId, command: effectiveCommand }),
+        body: JSON.stringify({ sandboxId: activeSandboxId, command: effectiveCommand, asRoot: rootModeRef.current }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -389,6 +403,8 @@ export default function IDE() {
           setCwd(nextCwd);
         }
       }
+
+      await refreshWorkspaceTree(activeSandboxId);
 
       setRunStatus(ok ? "success" : "error");
       setAgentLog((prev) => [...prev.slice(-120), ok ? "✓ Command finished" : "✗ Command failed"]);
