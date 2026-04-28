@@ -118,6 +118,9 @@ export default function IDE() {
   const [chat, setChat] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [fileTree, setFileTree] = useState<FsNode[]>(treeFromPaths(["main.py"]));
+  const [saving, setSaving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     cwdRef.current = cwd;
@@ -146,6 +149,51 @@ export default function IDE() {
     setCommandOutput((prev) => prev + text);
     xtermRef.current?.write(stream === "stderr" ? `\x1b[31m${toTerminalText(text)}\x1b[0m` : toTerminalText(text));
   }, []);
+
+  const refreshWorkspaceTree = useCallback(async (activeSandboxId = sandboxIdRef.current) => {
+    const saved = tabs.map((t) => normalizeWorkspacePath(t.path));
+    if (!activeSandboxId) {
+      setFileTree(treeFromPaths(saved));
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke("sandbox-fs", {
+        body: { sandboxId: activeSandboxId, action: "tree", path: HOME_DIR },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      const remote = (data.entries || []).map((e: any) => normalizeWorkspacePath(e.path)).filter(Boolean);
+      setFileTree(treeFromPaths([...saved, ...remote]));
+    } catch {
+      setFileTree(treeFromPaths(saved));
+    }
+  }, [tabs]);
+
+  const saveTabToCloud = useCallback(async (tab: FileTab) => {
+    if (!user) return;
+    const path = normalizeWorkspacePath(tab.path);
+    const { error } = await supabase.from("ide_files" as any).upsert({
+      user_id: user.id,
+      path,
+      content: tab.content,
+    } as any, { onConflict: "user_id,path" });
+    if (error) throw error;
+  }, [user]);
+
+  const saveAllWorkspace = useCallback(async (options?: { silent?: boolean }) => {
+    if (!user || saving) return;
+    setSaving(true);
+    try {
+      await Promise.all(tabs.map(saveTabToCloud));
+      setTabs((prev) => prev.map((t) => ({ ...t, dirty: false })));
+      await refreshWorkspaceTree();
+      if (!options?.silent) toast.success("Workspace saved");
+    } catch (e: any) {
+      toast.error(e.message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }, [refreshWorkspaceTree, saveTabToCloud, saving, tabs, user]);
 
   const startSandbox = useCallback(async (showPrompt = true, templateOverride?: string): Promise<string | null> => {
     if (sandboxIdRef.current) return sandboxIdRef.current;
