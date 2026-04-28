@@ -127,17 +127,18 @@ export default function IDE() {
     xtermRef.current?.write(stream === "stderr" ? `\x1b[31m${toTerminalText(text)}\x1b[0m` : toTerminalText(text));
   }, []);
 
-  const startSandbox = useCallback(async (showPrompt = true): Promise<string | null> => {
+  const startSandbox = useCallback(async (showPrompt = true, templateOverride?: string): Promise<string | null> => {
     if (sandboxIdRef.current) return sandboxIdRef.current;
     if (!session?.access_token) {
       toast.error("Sign in first");
       return null;
     }
 
+    const template = templateOverride || osTemplate;
     setStarting(true);
-    appendActivity("\x1b[38;5;208m→\x1b[0m Starting AxoX Linux sandbox...");
+    appendActivity(`\x1b[38;5;208m→\x1b[0m Booting ${template} sandbox...`);
     try {
-      const { data, error } = await supabase.functions.invoke("sandbox-create");
+      const { data, error } = await supabase.functions.invoke("sandbox-create", { body: { template } });
       if (error || data?.error) {
         const msg = data?.error || error?.message || "Failed to start sandbox";
         appendActivity(`\x1b[31m✗ ${msg}\x1b[0m`);
@@ -151,11 +152,13 @@ export default function IDE() {
       setTier(data.tier);
       setUsage(data.usage);
       setLimits(data.limits);
+      setResources(data.resources || null);
       setCwd(HOME_DIR);
       cwdRef.current = HOME_DIR;
-      appendActivity(`\x1b[32m✓ Sandbox ready: ${data.sandboxId}\x1b[0m`);
+      appendActivity(`\x1b[32m✓ ${template} ready: ${data.sandboxId}\x1b[0m`);
+      if (data.resources) appendActivity(`Resources: ${data.resources.ramGb}GB RAM · ${data.resources.vcpu} vCPU · ${data.resources.diskGb}GB disk`);
       appendActivity(
-        `Tier: ${data.tier} | Weekly: ${data.limits.weekly ? Math.round(data.limits.weekly / 60) + "m" : "∞"} | Daily: ${data.limits.daily ? Math.round(data.limits.daily / 3600) + "h" : "∞"}`,
+        `Tier: ${data.tier} | Daily: ${data.limits.daily ? Math.round(data.limits.daily / 3600) + "h" : "∞"}`,
       );
       if (showPrompt) prompt();
       return data.sandboxId;
