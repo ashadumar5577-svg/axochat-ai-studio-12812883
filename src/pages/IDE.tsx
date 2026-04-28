@@ -228,10 +228,17 @@ export default function IDE() {
       setCwd(HOME_DIR);
       cwdRef.current = HOME_DIR;
       appendActivity(`\x1b[32m✓ ${template} ready: ${data.sandboxId}\x1b[0m`);
+      if (data.os) appendActivity(`OS: ${data.os.name} ${data.os.version}`);
       if (data.resources) appendActivity(`Resources: ${data.resources.ramGb}GB RAM · ${data.resources.vcpu} vCPU · ${data.resources.diskGb}GB disk`);
       appendActivity(
         `Tier: ${data.tier} | Daily: ${data.limits.daily ? Math.round(data.limits.daily / 3600) + "h" : "∞"}`,
       );
+      for (const tab of tabs) {
+        await supabase.functions.invoke("sandbox-fs", {
+          body: { sandboxId: data.sandboxId, action: "write", path: `${HOME_DIR}/${normalizeWorkspacePath(tab.path)}`, content: tab.content },
+        });
+      }
+      await refreshWorkspaceTree(data.sandboxId);
       if (showPrompt) prompt();
       return data.sandboxId;
     } catch (e: any) {
@@ -241,7 +248,7 @@ export default function IDE() {
     } finally {
       setStarting(false);
     }
-  }, [appendActivity, prompt, sandboxId, session?.access_token, osTemplate]);
+  }, [appendActivity, prompt, sandboxId, session?.access_token, osTemplate, tabs, refreshWorkspaceTree]);
 
   const sendChat = useCallback(async () => {
     const text = chatInput.trim();
