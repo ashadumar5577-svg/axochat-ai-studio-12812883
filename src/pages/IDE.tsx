@@ -24,7 +24,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Code2,
+  Bot,
+  Send,
+  Cpu,
+  HardDrive,
+  MemoryStick,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -33,6 +39,16 @@ const HOME_DIR = "/home/user";
 type FileTab = { path: string; content: string; dirty: boolean };
 type BottomPanel = "terminal" | "output" | "problems";
 type RunStatus = "idle" | "running" | "success" | "error";
+type RightPanel = "result" | "chat";
+type ChatMsg = { role: "user" | "assistant"; content: string; events?: { name: string; args: any; result: any }[] };
+
+const OS_OPTIONS = [
+  { id: "ubuntu-22.04", label: "Ubuntu 22.04 LTS", desc: "Default — broad compatibility" },
+  { id: "ubuntu-24.04", label: "Ubuntu 24.04 LTS", desc: "Latest Ubuntu" },
+  { id: "debian-12", label: "Debian 12", desc: "Stable Linux" },
+  { id: "node", label: "Node.js workspace", desc: "Pre-installed Node + npm" },
+  { id: "python", label: "Python workspace", desc: "Pre-installed Python 3" },
+];
 
 const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "");
 const toTerminalText = (value: string) => value.replace(/\r?\n/g, "\r\n");
@@ -75,6 +91,13 @@ export default function IDE() {
   const [ghConnected, setGhConnected] = useState(false);
   const [ghUser, setGhUser] = useState<string | null>(null);
   const [agentLog, setAgentLog] = useState<string[]>([]);
+  const [resources, setResources] = useState<{ ramGb: number; vcpu: number; diskGb: number } | null>(null);
+  const [osTemplate, setOsTemplate] = useState<string>("ubuntu-22.04");
+  const [osPickerOpen, setOsPickerOpen] = useState(false);
+  const [rightPanel, setRightPanel] = useState<RightPanel>("chat");
+  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
 
   useEffect(() => {
     cwdRef.current = cwd;
@@ -104,17 +127,18 @@ export default function IDE() {
     xtermRef.current?.write(stream === "stderr" ? `\x1b[31m${toTerminalText(text)}\x1b[0m` : toTerminalText(text));
   }, []);
 
-  const startSandbox = useCallback(async (showPrompt = true): Promise<string | null> => {
+  const startSandbox = useCallback(async (showPrompt = true, templateOverride?: string): Promise<string | null> => {
     if (sandboxIdRef.current) return sandboxIdRef.current;
     if (!session?.access_token) {
       toast.error("Sign in first");
       return null;
     }
 
+    const template = templateOverride || osTemplate;
     setStarting(true);
-    appendActivity("\x1b[38;5;208m→\x1b[0m Starting AxoX Linux sandbox...");
+    appendActivity(`\x1b[38;5;208m→\x1b[0m Booting ${template} sandbox...`);
     try {
-      const { data, error } = await supabase.functions.invoke("sandbox-create");
+      const { data, error } = await supabase.functions.invoke("sandbox-create", { body: { template } });
       if (error || data?.error) {
         const msg = data?.error || error?.message || "Failed to start sandbox";
         appendActivity(`\x1b[31m✗ ${msg}\x1b[0m`);
@@ -128,11 +152,13 @@ export default function IDE() {
       setTier(data.tier);
       setUsage(data.usage);
       setLimits(data.limits);
+      setResources(data.resources || null);
       setCwd(HOME_DIR);
       cwdRef.current = HOME_DIR;
-      appendActivity(`\x1b[32m✓ Sandbox ready: ${data.sandboxId}\x1b[0m`);
+      appendActivity(`\x1b[32m✓ ${template} ready: ${data.sandboxId}\x1b[0m`);
+      if (data.resources) appendActivity(`Resources: ${data.resources.ramGb}GB RAM · ${data.resources.vcpu} vCPU · ${data.resources.diskGb}GB disk`);
       appendActivity(
-        `Tier: ${data.tier} | Weekly: ${data.limits.weekly ? Math.round(data.limits.weekly / 60) + "m" : "∞"} | Daily: ${data.limits.daily ? Math.round(data.limits.daily / 3600) + "h" : "∞"}`,
+        `Tier: ${data.tier} | Daily: ${data.limits.daily ? Math.round(data.limits.daily / 3600) + "h" : "∞"}`,
       );
       if (showPrompt) prompt();
       return data.sandboxId;
@@ -143,7 +169,40 @@ export default function IDE() {
     } finally {
       setStarting(false);
     }
-  }, [appendActivity, prompt, sandboxId, session?.access_token]);
+  }, [appendActivity, prompt, sandboxId, session?.access_token, osTemplate]);
+
+  const sendChat = useCallback(async () => {
+    const text = chatInput.trim();
+    if (!text || chatBusy) return;
+    setChatInput("");
+    const next: ChatMsg[] = [...chat, { role: "user", content: text }];
+    setChat(next);
+    setChatBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-agent", {
+        body: {
+          sandboxId: sandboxIdRef.current,
+          messages: next.map((m) => ({ role: m.role, content: m.content })),
+        },
+      });
+      if (error || data?.error) {
+        const msg = data?.error || error?.message || "AI failed";
+        toast.error(msg);
+        setChat((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}` }]);
+      } else {
+        setChat((prev) => [...prev, { role: "assistant", content: data.reply || "(no reply)", events: data.toolEvents || [] }]);
+        if (data.toolEvents?.length) {
+          for (const ev of data.toolEvents) {
+            appendActivity(`\x1b[36m🤖 ${ev.name}(${JSON.stringify(ev.args).slice(0, 80)})\x1b[0m`, false);
+          }
+        }
+      }
+    } catch (e: any) {
+      toast.error(e.message || "AI failed");
+    } finally {
+      setChatBusy(false);
+    }
+  }, [chat, chatInput, chatBusy, appendActivity]);
 
   const stopSandbox = async () => {
     if (!sandboxId) return;
@@ -571,14 +630,15 @@ export default function IDE() {
 
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
         {!sandboxId ? (
-          <Button size="sm" onClick={() => startSandbox()} disabled={starting} variant="hero">
-            {starting ? <Loader2 className="animate-spin" /> : <Play />} Start Sandbox
+          <Button size="sm" onClick={() => setOsPickerOpen(true)} disabled={starting} variant="hero">
+            {starting ? <Loader2 className="animate-spin" /> : <Play />} New Environment
           </Button>
         ) : (
           <Button size="sm" onClick={stopSandbox} variant="destructive">
             <Square /> Stop
           </Button>
         )}
+        <span className="rounded-sm border border-border bg-secondary px-2 py-1 text-[11px] text-muted-foreground">{osTemplate}</span>
 
         <Button size="sm" onClick={runActiveFile} disabled={running || starting}>
           {running ? <Loader2 className="animate-spin" /> : <Play />} Run File
@@ -618,7 +678,8 @@ export default function IDE() {
         <div className="flex w-12 shrink-0 flex-col items-center border-r border-border bg-card py-2">
           <button className="mb-2 rounded-sm bg-secondary p-2 text-primary" aria-label="Explorer"><Folder className="h-5 w-5" /></button>
           <button className="mb-2 rounded-sm p-2 text-muted-foreground hover:bg-secondary" aria-label="Terminal" onClick={() => setBottomPanel("terminal")}><TerminalIcon className="h-5 w-5" /></button>
-          <button className="rounded-sm p-2 text-muted-foreground hover:bg-secondary" aria-label="Output" onClick={() => setBottomPanel("output")}><PanelBottom className="h-5 w-5" /></button>
+          <button className="mb-2 rounded-sm p-2 text-muted-foreground hover:bg-secondary" aria-label="Output" onClick={() => setBottomPanel("output")}><PanelBottom className="h-5 w-5" /></button>
+          <button className={`rounded-sm p-2 ${rightPanel === "chat" ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-secondary"}`} aria-label="AI Chat" onClick={() => setRightPanel("chat")}><Bot className="h-5 w-5" /></button>
         </div>
 
         <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-background">
@@ -697,35 +758,100 @@ export default function IDE() {
           </section>
         </main>
 
-        <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-background">
-          <div className="flex h-9 items-center gap-2 border-b border-border px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" /> Run Result
+        <aside className="flex w-96 shrink-0 flex-col border-l border-border bg-background">
+          <div className="flex h-9 shrink-0 items-center border-b border-border text-xs">
+            <button onClick={() => setRightPanel("chat")} className={`flex h-full items-center gap-2 px-3 ${rightPanel === "chat" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <Bot className="h-3.5 w-3.5" /> AxoX Copilot
+            </button>
+            <button onClick={() => setRightPanel("result")} className={`flex h-full items-center gap-2 px-3 ${rightPanel === "result" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <Sparkles className="h-3.5 w-3.5" /> Run Result
+            </button>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-xs">
-            <div className="rounded-sm border border-border bg-card p-3">
-              <div className="mb-2 flex items-center gap-2 font-semibold">{statusIcon}<span>{runStatus === "idle" ? "Ready" : runStatus}</span></div>
-              <div className="break-all font-mono text-muted-foreground">{lastCommand || "No command run yet"}</div>
-            </div>
 
-            {previewHtml && (
-              <div className="min-h-64 overflow-hidden rounded-sm border border-border bg-card">
-                <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">HTML Preview</div>
-                <iframe title="HTML preview" srcDoc={previewHtml} className="h-56 w-full bg-background" sandbox="allow-scripts" />
+          {rightPanel === "result" && (
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 text-xs">
+              <div className="rounded-sm border border-border bg-card p-3">
+                <div className="mb-2 flex items-center gap-2 font-semibold">{statusIcon}<span>{runStatus === "idle" ? "Ready" : runStatus}</span></div>
+                <div className="break-all font-mono text-muted-foreground">{lastCommand || "No command run yet"}</div>
               </div>
-            )}
-
-            <div className="min-h-40 rounded-sm border border-border bg-card">
-              <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">Latest Output</div>
-              <pre className="max-h-64 overflow-auto whitespace-pre-wrap p-3 font-mono text-xs text-foreground">{commandOutput || "Output and command results appear here."}</pre>
-            </div>
-
-            <div className="rounded-sm border border-border bg-card">
-              <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">Activity</div>
-              <div className="max-h-48 overflow-auto p-3 font-mono text-xs text-muted-foreground">
-                {agentLog.length === 0 ? "No activity yet." : agentLog.slice(-20).map((line, i) => <div key={`${line}-${i}`} className="break-words">{line}</div>)}
+              {resources && (
+                <div className="grid grid-cols-3 gap-2 rounded-sm border border-border bg-card p-3 text-center">
+                  <div><MemoryStick className="mx-auto h-4 w-4 text-primary" /><div className="mt-1 font-semibold">{resources.ramGb}GB</div><div className="text-muted-foreground">RAM</div></div>
+                  <div><Cpu className="mx-auto h-4 w-4 text-primary" /><div className="mt-1 font-semibold">{resources.vcpu}</div><div className="text-muted-foreground">vCPU</div></div>
+                  <div><HardDrive className="mx-auto h-4 w-4 text-primary" /><div className="mt-1 font-semibold">{resources.diskGb}GB</div><div className="text-muted-foreground">Disk</div></div>
+                </div>
+              )}
+              {previewHtml && (
+                <div className="min-h-64 overflow-hidden rounded-sm border border-border bg-card">
+                  <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">HTML Preview</div>
+                  <iframe title="HTML preview" srcDoc={previewHtml} className="h-56 w-full bg-background" sandbox="allow-scripts" />
+                </div>
+              )}
+              <div className="min-h-40 rounded-sm border border-border bg-card">
+                <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">Latest Output</div>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap p-3 font-mono text-xs text-foreground">{commandOutput || "Output appears here."}</pre>
+              </div>
+              <div className="rounded-sm border border-border bg-card">
+                <div className="border-b border-border px-3 py-2 font-semibold text-muted-foreground">Activity</div>
+                <div className="max-h-48 overflow-auto p-3 font-mono text-xs text-muted-foreground">
+                  {agentLog.length === 0 ? "No activity yet." : agentLog.slice(-20).map((line, i) => <div key={`${line}-${i}`} className="break-words">{line}</div>)}
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {rightPanel === "chat" && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex-1 space-y-3 overflow-y-auto p-3 text-xs">
+                {chat.length === 0 && (
+                  <div className="rounded-md border border-border bg-card p-3 text-muted-foreground">
+                    <div className="mb-1 flex items-center gap-2 font-semibold text-foreground"><Bot className="h-4 w-4 text-primary" /> AxoX Copilot</div>
+                    Ask me to write code, create files, run commands, or fix bugs in your sandbox.
+                  </div>
+                )}
+                {chat.map((m, i) => (
+                  <div key={i} className={`rounded-md border p-3 ${m.role === "user" ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{m.role === "user" ? "You" : "Copilot"}</div>
+                    <div className="whitespace-pre-wrap text-foreground">{m.content}</div>
+                    {m.events && m.events.length > 0 && (
+                      <div className="mt-2 space-y-1 border-t border-border pt-2">
+                        {m.events.map((ev, j) => (
+                          <div key={j} className="font-mono text-[10px] text-muted-foreground">
+                            <span className="text-primary">⚡ {ev.name}</span>
+                            {ev.args?.path && <> · {ev.args.path}</>}
+                            {ev.args?.command && <> · {String(ev.args.command).slice(0, 60)}</>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {chatBusy && (
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-card p-3 text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking...
+                  </div>
+                )}
+              </div>
+              <div className="border-t border-border p-2">
+                <div className="flex items-end gap-2">
+                  <Textarea
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
+                    placeholder="Ask Copilot... (Enter to send)"
+                    className="min-h-[44px] resize-none text-xs"
+                    rows={2}
+                  />
+                  <Button size="sm" onClick={sendChat} disabled={chatBusy || !chatInput.trim()}>
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  {sandboxId ? "Connected to sandbox — Copilot can edit files & run commands" : "No sandbox — Copilot will only chat. Start an environment to enable tools."}
+                </div>
+              </div>
+            </div>
+          )}
         </aside>
       </div>
 
@@ -733,7 +859,44 @@ export default function IDE() {
         <span>{sandboxId ? "AxoX sandbox connected" : "AxoX sandbox will auto-start on first command"}</span>
         <span>{cwd}</span>
         <span className="ml-auto">VS Code-style cloud workspace</span>
-      </div>
+
+      {osPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setOsPickerOpen(false)}>
+          <div className="w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-foreground">Create AxoX Environment</h2>
+              <p className="text-xs text-muted-foreground">Choose an operating system / runtime template.</p>
+            </div>
+            <div className="space-y-2">
+              {OS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setOsTemplate(opt.id)}
+                  className={`flex w-full items-start justify-between rounded-md border p-3 text-left text-sm transition ${osTemplate === opt.id ? "border-primary bg-primary/5" : "border-border hover:bg-secondary"}`}
+                >
+                  <div>
+                    <div className="font-semibold text-foreground">{opt.label}</div>
+                    <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                  </div>
+                  {osTemplate === opt.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 rounded-md border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
+              <div className="mb-1 font-semibold text-foreground">Resources for your tier</div>
+              <div>Free: 4GB RAM · 3 vCPU · 30GB disk · 1h/day</div>
+              <div>Paid: 12GB RAM · 5 vCPU · 200GB disk · 12h/day</div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOsPickerOpen(false)}>Cancel</Button>
+              <Button variant="hero" onClick={() => { setOsPickerOpen(false); startSandbox(true, osTemplate); }} disabled={starting}>
+                {starting ? <Loader2 className="animate-spin" /> : <Play />} Launch
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 }
