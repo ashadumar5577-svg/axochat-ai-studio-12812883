@@ -91,6 +91,13 @@ export default function IDE() {
   const [ghConnected, setGhConnected] = useState(false);
   const [ghUser, setGhUser] = useState<string | null>(null);
   const [agentLog, setAgentLog] = useState<string[]>([]);
+  const [resources, setResources] = useState<{ ramGb: number; vcpu: number; diskGb: number } | null>(null);
+  const [osTemplate, setOsTemplate] = useState<string>("ubuntu-22.04");
+  const [osPickerOpen, setOsPickerOpen] = useState(false);
+  const [rightPanel, setRightPanel] = useState<RightPanel>("chat");
+  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
 
   useEffect(() => {
     cwdRef.current = cwd;
