@@ -29,6 +29,10 @@ import {
   Cpu,
   HardDrive,
   MemoryStick,
+  Save,
+  RefreshCcw,
+  FolderPlus,
+  FolderOpen,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -41,6 +45,7 @@ type BottomPanel = "terminal" | "output" | "problems";
 type RunStatus = "idle" | "running" | "success" | "error";
 type RightPanel = "result" | "chat";
 type ChatMsg = { role: "user" | "assistant"; content: string; events?: { name: string; args: any; result: any }[] };
+type FsNode = { path: string; name: string; type: "file" | "dir"; depth: number; saved?: boolean };
 
 const OS_OPTIONS = [
   { id: "ubuntu-22.04", label: "Ubuntu 22.04 LTS", desc: "Default — broad compatibility" },
@@ -53,6 +58,21 @@ const OS_OPTIONS = [
 const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "");
 const toTerminalText = (value: string) => value.replace(/\r?\n/g, "\r\n");
 const shellQuote = (value: string) => `'${value.replace(/'/g, "'\\''")}'`;
+const normalizeWorkspacePath = (path: string) => path.replace(/^\/home\/user\/?/, "").replace(/^\/+/, "").replace(/\/+/g, "/") || "main.py";
+
+const treeFromPaths = (paths: string[]): FsNode[] => {
+  const nodes = new Map<string, FsNode>();
+  for (const raw of paths) {
+    const path = normalizeWorkspacePath(raw);
+    const parts = path.split("/").filter(Boolean);
+    parts.forEach((part, idx) => {
+      const itemPath = parts.slice(0, idx + 1).join("/");
+      const type = idx === parts.length - 1 ? "file" : "dir";
+      if (!nodes.has(itemPath)) nodes.set(itemPath, { path: itemPath, name: part, type, depth: idx, saved: true });
+    });
+  }
+  return [...nodes.values()].sort((a, b) => a.path.localeCompare(b.path));
+};
 
 export default function IDE() {
   const { user, session, loading } = useAuth();
@@ -66,6 +86,7 @@ export default function IDE() {
   const sandboxIdRef = useRef<string | null>(null);
   const runningRef = useRef(false);
   const currentLineRef = useRef("");
+  const rootModeRef = useRef(false);
 
   const [sandboxId, setSandboxId] = useState<string | null>(null);
   const [tier, setTier] = useState<string>("free");
@@ -98,6 +119,10 @@ export default function IDE() {
   const [chat, setChat] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [fileTree, setFileTree] = useState<FsNode[]>(treeFromPaths(["main.py"]));
+  const [saving, setSaving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [rootMode, setRootMode] = useState(false);
 
   useEffect(() => {
     cwdRef.current = cwd;
@@ -112,7 +137,9 @@ export default function IDE() {
   }, [running]);
 
   const prompt = useCallback(() => {
-    xtermRef.current?.write(`\x1b[38;5;208muser@axox\x1b[0m:\x1b[38;5;75m${cwdRef.current}\x1b[0m$ `);
+    const name = rootModeRef.current ? "root" : "user";
+    const symbol = rootModeRef.current ? "#" : "$";
+    xtermRef.current?.write(`\x1b[38;5;208m${name}@axox\x1b[0m:\x1b[38;5;75m${cwdRef.current}\x1b[0m${symbol} `);
   }, []);
 
   const appendActivity = useCallback((line: string, writeToTerminal = true) => {
@@ -126,6 +153,51 @@ export default function IDE() {
     setCommandOutput((prev) => prev + text);
     xtermRef.current?.write(stream === "stderr" ? `\x1b[31m${toTerminalText(text)}\x1b[0m` : toTerminalText(text));
   }, []);
+
+  const refreshWorkspaceTree = useCallback(async (activeSandboxId = sandboxIdRef.current) => {
+    const saved = tabs.map((t) => normalizeWorkspacePath(t.path));
+    if (!activeSandboxId) {
+      setFileTree(treeFromPaths(saved));
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke("sandbox-fs", {
+        body: { sandboxId: activeSandboxId, action: "tree", path: HOME_DIR },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      const remote = (data.entries || []).map((e: any) => normalizeWorkspacePath(e.path)).filter(Boolean);
+      setFileTree(treeFromPaths([...saved, ...remote]));
+    } catch {
+      setFileTree(treeFromPaths(saved));
+    }
+  }, [tabs]);
+
+  const saveTabToCloud = useCallback(async (tab: FileTab) => {
+    if (!user) return;
+    const path = normalizeWorkspacePath(tab.path);
+    const { error } = await supabase.from("ide_files" as any).upsert({
+      user_id: user.id,
+      path,
+      content: tab.content,
+    } as any, { onConflict: "user_id,path" });
+    if (error) throw error;
+  }, [user]);
+
+  const saveAllWorkspace = useCallback(async (options?: { silent?: boolean }) => {
+    if (!user || saving) return;
+    setSaving(true);
+    try {
+      await Promise.all(tabs.map(saveTabToCloud));
+      setTabs((prev) => prev.map((t) => ({ ...t, dirty: false })));
+      await refreshWorkspaceTree();
+      if (!options?.silent) toast.success("Workspace saved");
+    } catch (e: any) {
+      toast.error(e.message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }, [refreshWorkspaceTree, saveTabToCloud, saving, tabs, user]);
 
   const startSandbox = useCallback(async (showPrompt = true, templateOverride?: string): Promise<string | null> => {
     if (sandboxIdRef.current) return sandboxIdRef.current;
@@ -156,10 +228,17 @@ export default function IDE() {
       setCwd(HOME_DIR);
       cwdRef.current = HOME_DIR;
       appendActivity(`\x1b[32m✓ ${template} ready: ${data.sandboxId}\x1b[0m`);
+      if (data.os) appendActivity(`OS: ${data.os.name} ${data.os.version}`);
       if (data.resources) appendActivity(`Resources: ${data.resources.ramGb}GB RAM · ${data.resources.vcpu} vCPU · ${data.resources.diskGb}GB disk`);
       appendActivity(
         `Tier: ${data.tier} | Daily: ${data.limits.daily ? Math.round(data.limits.daily / 3600) + "h" : "∞"}`,
       );
+      for (const tab of tabs) {
+        await supabase.functions.invoke("sandbox-fs", {
+          body: { sandboxId: data.sandboxId, action: "write", path: `${HOME_DIR}/${normalizeWorkspacePath(tab.path)}`, content: tab.content },
+        });
+      }
+      await refreshWorkspaceTree(data.sandboxId);
       if (showPrompt) prompt();
       return data.sandboxId;
     } catch (e: any) {
@@ -169,7 +248,7 @@ export default function IDE() {
     } finally {
       setStarting(false);
     }
-  }, [appendActivity, prompt, sandboxId, session?.access_token, osTemplate]);
+  }, [appendActivity, prompt, sandboxId, session?.access_token, osTemplate, tabs, refreshWorkspaceTree]);
 
   const sendChat = useCallback(async () => {
     const text = chatInput.trim();
@@ -222,6 +301,20 @@ export default function IDE() {
 
     const trimmed = command.trim();
     if (!trimmed) return { ok: true, stdout: "", stderr: "" };
+
+    if (["sudo su", "sudo -i", "su", "su -", "sudo bash", "sudo sh"].includes(trimmed)) {
+      rootModeRef.current = true;
+      setRootMode(true);
+      xtermRef.current?.writeln("\x1b[32mSwitched to root command mode. Type exit to return to user.\x1b[0m");
+      return { ok: true, stdout: "", stderr: "" };
+    }
+
+    if (trimmed === "exit" && rootModeRef.current) {
+      rootModeRef.current = false;
+      setRootMode(false);
+      xtermRef.current?.writeln("\x1b[32mReturned to user mode.\x1b[0m");
+      return { ok: true, stdout: "", stderr: "" };
+    }
 
     if (trimmed === "clear" || trimmed === "cls") {
       xtermRef.current?.clear();
@@ -284,7 +377,7 @@ export default function IDE() {
           Authorization: `Bearer ${session?.access_token}`,
           apikey: PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ sandboxId: activeSandboxId, command: effectiveCommand }),
+        body: JSON.stringify({ sandboxId: activeSandboxId, command: effectiveCommand, asRoot: rootModeRef.current }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -318,6 +411,8 @@ export default function IDE() {
         }
       }
 
+      await refreshWorkspaceTree(activeSandboxId);
+
       setRunStatus(ok ? "success" : "error");
       setAgentLog((prev) => [...prev.slice(-120), ok ? "✓ Command finished" : "✗ Command failed"]);
       return { ok, stdout, stderr };
@@ -334,7 +429,7 @@ export default function IDE() {
       runningRef.current = false;
       if ((stdout || stderr) && !(stdout + stderr).endsWith("\n")) xtermRef.current?.write("\r\n");
     }
-  }, [appendResult, sandboxId, session?.access_token, startSandbox]);
+  }, [appendResult, refreshWorkspaceTree, sandboxId, session?.access_token, startSandbox]);
 
   useEffect(() => {
     if (!termRef.current || xtermRef.current) return;
@@ -409,6 +504,41 @@ export default function IDE() {
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    const restoreWorkspace = async () => {
+      setRestoring(true);
+      try {
+        const cutoff = new Date(Date.now() - 62 * 24 * 60 * 60 * 1000).toISOString();
+        await supabase.from("ide_files" as any).delete().eq("user_id", user.id).lt("updated_at", cutoff);
+
+        const { data, error } = await supabase
+          .from("ide_files" as any)
+          .select("path, content")
+          .eq("user_id", user.id)
+          .order("path", { ascending: true });
+        if (error) throw error;
+        if (cancelled || !data?.length) {
+          if (!data?.length) setFileTree(treeFromPaths(tabs.map((t) => t.path)));
+          return;
+        }
+        const restored = data.map((row: any) => ({ path: normalizeWorkspacePath(row.path), content: row.content || "", dirty: false }));
+        setTabs(restored);
+        setActiveTab(0);
+        setFileTree(treeFromPaths(restored.map((t) => t.path)));
+      } catch (e: any) {
+        toast.error(e.message || "Could not restore workspace");
+      } finally {
+        if (!cancelled) setRestoring(false);
+      }
+    };
+
+    restoreWorkspace();
+    return () => { cancelled = true; };
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -565,8 +695,38 @@ export default function IDE() {
   const newTab = () => {
     const name = promptWindow("File name:", `file${tabs.length + 1}.py`);
     if (!name) return;
-    setTabs([...tabs, { path: name, content: "", dirty: false }]);
+    const path = normalizeWorkspacePath(name);
+    setTabs([...tabs, { path, content: "", dirty: true }]);
     setActiveTab(tabs.length);
+    setFileTree(treeFromPaths([...fileTree.map((n) => n.path), path]));
+  };
+
+  const newFolder = async () => {
+    const name = promptWindow("Folder name:", "src");
+    if (!name) return;
+    const path = normalizeWorkspacePath(name);
+    const nextFile = `${path}/index.ts`;
+    setTabs((prev) => [...prev, { path: nextFile, content: "", dirty: true }]);
+    setActiveTab(tabs.length);
+    setFileTree(treeFromPaths([...fileTree.map((n) => n.path), nextFile]));
+    if (sandboxIdRef.current) {
+      await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "mkdir", path: `${HOME_DIR}/${path}` } });
+      await refreshWorkspaceTree();
+    }
+  };
+
+  const openFileFromTree = async (path: string) => {
+    const normalized = normalizeWorkspacePath(path);
+    const existing = tabs.findIndex((t) => normalizeWorkspacePath(t.path) === normalized);
+    if (existing >= 0) {
+      setActiveTab(existing);
+      return;
+    }
+    if (sandboxIdRef.current) {
+      const { data } = await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "read", path: `${HOME_DIR}/${normalized}` } });
+      setTabs((prev) => [...prev, { path: normalized, content: data?.content || "", dirty: false }]);
+      setActiveTab(tabs.length);
+    }
   };
 
   const closeTab = (i: number) => {

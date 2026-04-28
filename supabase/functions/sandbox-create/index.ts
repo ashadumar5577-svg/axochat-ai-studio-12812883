@@ -1,8 +1,7 @@
 import { Sandbox } from "npm:@e2b/code-interpreter@1.5.1";
 import { corsHeaders, jsonResponse, getUserAndAdmin, getUserTier, tierLimits, tierResources } from "../_shared/auth.ts";
 
-// Allowed OS templates user can pick from when creating an environment.
-// Values are E2B template ids (or aliases). "base" is E2B's default Ubuntu image.
+// E2B's public runtime is Ubuntu-based; Debian selections are bootstrapped with a matching userland marker.
 const OS_TEMPLATES: Record<string, string> = {
   "ubuntu-22.04": "base",
   "ubuntu-24.04": "base",
@@ -43,8 +42,25 @@ Deno.serve(async (req) => {
     if (!E2B_API_KEY) return jsonResponse({ error: "E2B not configured" }, 500);
 
     const e2bTemplate = OS_TEMPLATES[template];
-    const sbx = await Sandbox.create(e2bTemplate, { apiKey: E2B_API_KEY, timeoutMs: 30 * 60 * 1000 });
+    const sbx = await Sandbox.create(e2bTemplate, {
+      apiKey: E2B_API_KEY,
+      timeoutMs: Math.min(limits.daily === Infinity ? 12 * 60 * 60 * 1000 : limits.daily * 1000, 12 * 60 * 60 * 1000),
+      metadata: { os: template, tier, userId: user.id },
+    });
     const sandboxId = sbx.sandboxId;
+    const osInfo = template === "debian-12"
+      ? { name: "Debian", version: "12 compatible userland" }
+      : template === "ubuntu-24.04"
+        ? { name: "Ubuntu", version: "24.04 compatible" }
+        : { name: "Ubuntu", version: "22.04 LTS compatible" };
+
+    await sbx.commands.run(`mkdir -p /home/user && cat > /home/user/.axox-os <<'EOF'
+${osInfo.name} ${osInfo.version}
+EOF
+cat > /home/user/README.axox.txt <<'EOF'
+AxoX IDE Environment
+Selected OS: ${osInfo.name} ${osInfo.version}
+EOF`, { user: "root", timeoutMs: 10_000 }).catch(console.warn);
 
     const { data: session, error: insErr } = await admin.from("sandbox_sessions").insert({
       user_id: user.id,
@@ -59,6 +75,7 @@ Deno.serve(async (req) => {
       sandboxId,
       tier,
       template,
+      os: osInfo,
       resources,
       usage: { week, day },
       limits: {

@@ -9,8 +9,12 @@ Deno.serve(async (req) => {
     if ("error" in ctx) return jsonResponse({ error: ctx.error }, ctx.status);
     const { user, admin } = ctx;
 
-    const { sandboxId, command } = await req.json();
+    const { sandboxId, command, asRoot } = await req.json();
     if (!sandboxId || !command) return jsonResponse({ error: "Missing sandboxId or command" }, 400);
+    const rawCommand = String(command).trim();
+    if (/^(sudo\s+)?(su|bash|sh|zsh|fish)(\s+(-|--login|-i))?\s*$/.test(rawCommand)) {
+      return jsonResponse({ error: "Interactive shells are handled in the IDE prompt. Use sudo <command> or type sudo su in the terminal to switch prompt mode." }, 400);
+    }
 
     const { data: session } = await admin.from("sandbox_sessions")
       .select("*").eq("e2b_sandbox_id", sandboxId).eq("user_id", user.id).single();
@@ -25,8 +29,9 @@ Deno.serve(async (req) => {
         const send = (obj: unknown) =>
           controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
         try {
-          await sbx.commands.run(command, {
+          await sbx.commands.run(rawCommand, {
             timeoutMs: 120_000,
+            user: asRoot ? "root" : "user",
             onStdout: (data: string) => send({ stdout: data }),
             onStderr: (data: string) => send({ stderr: data }),
           });
