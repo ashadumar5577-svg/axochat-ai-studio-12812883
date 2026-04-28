@@ -429,7 +429,7 @@ export default function IDE() {
       runningRef.current = false;
       if ((stdout || stderr) && !(stdout + stderr).endsWith("\n")) xtermRef.current?.write("\r\n");
     }
-  }, [appendResult, sandboxId, session?.access_token, startSandbox]);
+  }, [appendResult, refreshWorkspaceTree, sandboxId, session?.access_token, startSandbox]);
 
   useEffect(() => {
     if (!termRef.current || xtermRef.current) return;
