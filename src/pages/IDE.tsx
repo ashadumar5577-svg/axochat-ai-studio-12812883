@@ -859,7 +859,44 @@ export default function IDE() {
         <span>{sandboxId ? "AxoX sandbox connected" : "AxoX sandbox will auto-start on first command"}</span>
         <span>{cwd}</span>
         <span className="ml-auto">VS Code-style cloud workspace</span>
-      </div>
+
+      {osPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setOsPickerOpen(false)}>
+          <div className="w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-foreground">Create AxoX Environment</h2>
+              <p className="text-xs text-muted-foreground">Choose an operating system / runtime template.</p>
+            </div>
+            <div className="space-y-2">
+              {OS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setOsTemplate(opt.id)}
+                  className={`flex w-full items-start justify-between rounded-md border p-3 text-left text-sm transition ${osTemplate === opt.id ? "border-primary bg-primary/5" : "border-border hover:bg-secondary"}`}
+                >
+                  <div>
+                    <div className="font-semibold text-foreground">{opt.label}</div>
+                    <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                  </div>
+                  {osTemplate === opt.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 rounded-md border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
+              <div className="mb-1 font-semibold text-foreground">Resources for your tier</div>
+              <div>Free: 4GB RAM · 3 vCPU · 30GB disk · 1h/day</div>
+              <div>Paid: 12GB RAM · 5 vCPU · 200GB disk · 12h/day</div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOsPickerOpen(false)}>Cancel</Button>
+              <Button variant="hero" onClick={() => { setOsPickerOpen(false); startSandbox(true, osTemplate); }} disabled={starting}>
+                {starting ? <Loader2 className="animate-spin" /> : <Play />} Launch
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 }
