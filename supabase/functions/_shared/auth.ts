@@ -39,6 +39,11 @@ export async function getUserTier(admin: any, userId: string): Promise<"free" | 
 
 export function tierLimits(tier: "free" | "premium" | "axo_plus") {
   if (tier === "axo_plus") return { weekly: Infinity, daily: Infinity };
-  if (tier === "premium") return { weekly: Infinity, daily: 2 * 60 * 60 }; // 2h/day
-  return { weekly: 20 * 60, daily: Infinity }; // 20 min/week
+  if (tier === "premium") return { weekly: Infinity, daily: 12 * 60 * 60 }; // 12h/day
+  return { weekly: Infinity, daily: 60 * 60 }; // 1h/day
+}
+
+export function tierResources(tier: "free" | "premium" | "axo_plus") {
+  if (tier === "free") return { ramGb: 4, vcpu: 3, diskGb: 30 };
+  return { ramGb: 12, vcpu: 5, diskGb: 200 };
 }
