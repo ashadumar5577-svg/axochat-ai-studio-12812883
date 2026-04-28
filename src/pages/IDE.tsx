@@ -86,6 +86,7 @@ export default function IDE() {
   const sandboxIdRef = useRef<string | null>(null);
   const runningRef = useRef(false);
   const currentLineRef = useRef("");
+  const rootModeRef = useRef(false);
 
   const [sandboxId, setSandboxId] = useState<string | null>(null);
   const [tier, setTier] = useState<string>("free");
@@ -121,6 +122,7 @@ export default function IDE() {
   const [fileTree, setFileTree] = useState<FsNode[]>(treeFromPaths(["main.py"]));
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [rootMode, setRootMode] = useState(false);
 
   useEffect(() => {
     cwdRef.current = cwd;
@@ -135,7 +137,9 @@ export default function IDE() {
   }, [running]);
 
   const prompt = useCallback(() => {
-    xtermRef.current?.write(`\x1b[38;5;208muser@axox\x1b[0m:\x1b[38;5;75m${cwdRef.current}\x1b[0m$ `);
+    const name = rootModeRef.current ? "root" : "user";
+    const symbol = rootModeRef.current ? "#" : "$";
+    xtermRef.current?.write(`\x1b[38;5;208m${name}@axox\x1b[0m:\x1b[38;5;75m${cwdRef.current}\x1b[0m${symbol} `);
   }, []);
 
   const appendActivity = useCallback((line: string, writeToTerminal = true) => {
