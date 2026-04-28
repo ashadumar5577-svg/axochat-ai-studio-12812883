@@ -480,6 +480,41 @@ export default function IDE() {
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
+
+    const restoreWorkspace = async () => {
+      setRestoring(true);
+      try {
+        const cutoff = new Date(Date.now() - 62 * 24 * 60 * 60 * 1000).toISOString();
+        await supabase.from("ide_files" as any).delete().eq("user_id", user.id).lt("updated_at", cutoff);
+
+        const { data, error } = await supabase
+          .from("ide_files" as any)
+          .select("path, content")
+          .eq("user_id", user.id)
+          .order("path", { ascending: true });
+        if (error) throw error;
+        if (cancelled || !data?.length) {
+          if (!data?.length) setFileTree(treeFromPaths(tabs.map((t) => t.path)));
+          return;
+        }
+        const restored = data.map((row: any) => ({ path: normalizeWorkspacePath(row.path), content: row.content || "", dirty: false }));
+        setTabs(restored);
+        setActiveTab(0);
+        setFileTree(treeFromPaths(restored.map((t) => t.path)));
+      } catch (e: any) {
+        toast.error(e.message || "Could not restore workspace");
+      } finally {
+        if (!cancelled) setRestoring(false);
+      }
+    };
+
+    restoreWorkspace();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
     supabase.functions.invoke("github-api", { body: { action: "status" } }).then(({ data }) => {
       if (data?.connected) {
         setGhConnected(true);
