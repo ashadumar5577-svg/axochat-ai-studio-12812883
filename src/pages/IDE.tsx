@@ -169,7 +169,40 @@ export default function IDE() {
     } finally {
       setStarting(false);
     }
-  }, [appendActivity, prompt, sandboxId, session?.access_token]);
+  }, [appendActivity, prompt, sandboxId, session?.access_token, osTemplate]);
+
+  const sendChat = useCallback(async () => {
+    const text = chatInput.trim();
+    if (!text || chatBusy) return;
+    setChatInput("");
+    const next: ChatMsg[] = [...chat, { role: "user", content: text }];
+    setChat(next);
+    setChatBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-agent", {
+        body: {
+          sandboxId: sandboxIdRef.current,
+          messages: next.map((m) => ({ role: m.role, content: m.content })),
+        },
+      });
+      if (error || data?.error) {
+        const msg = data?.error || error?.message || "AI failed";
+        toast.error(msg);
+        setChat((prev) => [...prev, { role: "assistant", content: `⚠️ ${msg}` }]);
+      } else {
+        setChat((prev) => [...prev, { role: "assistant", content: data.reply || "(no reply)", events: data.toolEvents || [] }]);
+        if (data.toolEvents?.length) {
+          for (const ev of data.toolEvents) {
+            appendActivity(`\x1b[36m🤖 ${ev.name}(${JSON.stringify(ev.args).slice(0, 80)})\x1b[0m`, false);
+          }
+        }
+      }
+    } catch (e: any) {
+      toast.error(e.message || "AI failed");
+    } finally {
+      setChatBusy(false);
+    }
+  }, [chat, chatInput, chatBusy, appendActivity]);
 
   const stopSandbox = async () => {
     if (!sandboxId) return;
