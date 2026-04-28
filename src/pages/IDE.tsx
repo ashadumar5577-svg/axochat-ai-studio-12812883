@@ -29,6 +29,10 @@ import {
   Cpu,
   HardDrive,
   MemoryStick,
+  Save,
+  RefreshCcw,
+  FolderPlus,
+  FolderOpen,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -41,6 +45,7 @@ type BottomPanel = "terminal" | "output" | "problems";
 type RunStatus = "idle" | "running" | "success" | "error";
 type RightPanel = "result" | "chat";
 type ChatMsg = { role: "user" | "assistant"; content: string; events?: { name: string; args: any; result: any }[] };
+type FsNode = { path: string; name: string; type: "file" | "dir"; depth: number; saved?: boolean };
 
 const OS_OPTIONS = [
   { id: "ubuntu-22.04", label: "Ubuntu 22.04 LTS", desc: "Default — broad compatibility" },
@@ -53,6 +58,21 @@ const OS_OPTIONS = [
 const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "");
 const toTerminalText = (value: string) => value.replace(/\r?\n/g, "\r\n");
 const shellQuote = (value: string) => `'${value.replace(/'/g, "'\\''")}'`;
+const normalizeWorkspacePath = (path: string) => path.replace(/^\/home\/user\/?/, "").replace(/^\/+/, "").replace(/\/+/g, "/") || "main.py";
+
+const treeFromPaths = (paths: string[]): FsNode[] => {
+  const nodes = new Map<string, FsNode>();
+  for (const raw of paths) {
+    const path = normalizeWorkspacePath(raw);
+    const parts = path.split("/").filter(Boolean);
+    parts.forEach((part, idx) => {
+      const itemPath = parts.slice(0, idx + 1).join("/");
+      const type = idx === parts.length - 1 ? "file" : "dir";
+      if (!nodes.has(itemPath)) nodes.set(itemPath, { path: itemPath, name: part, type, depth: idx, saved: true });
+    });
+  }
+  return [...nodes.values()].sort((a, b) => a.path.localeCompare(b.path));
+};
 
 export default function IDE() {
   const { user, session, loading } = useAuth();
