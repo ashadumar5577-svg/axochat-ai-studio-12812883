@@ -695,8 +695,38 @@ export default function IDE() {
   const newTab = () => {
     const name = promptWindow("File name:", `file${tabs.length + 1}.py`);
     if (!name) return;
-    setTabs([...tabs, { path: name, content: "", dirty: false }]);
+    const path = normalizeWorkspacePath(name);
+    setTabs([...tabs, { path, content: "", dirty: true }]);
     setActiveTab(tabs.length);
+    setFileTree(treeFromPaths([...fileTree.map((n) => n.path), path]));
+  };
+
+  const newFolder = async () => {
+    const name = promptWindow("Folder name:", "src");
+    if (!name) return;
+    const path = normalizeWorkspacePath(name);
+    const nextFile = `${path}/index.ts`;
+    setTabs((prev) => [...prev, { path: nextFile, content: "", dirty: true }]);
+    setActiveTab(tabs.length);
+    setFileTree(treeFromPaths([...fileTree.map((n) => n.path), nextFile]));
+    if (sandboxIdRef.current) {
+      await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "mkdir", path: `${HOME_DIR}/${path}` } });
+      await refreshWorkspaceTree();
+    }
+  };
+
+  const openFileFromTree = async (path: string) => {
+    const normalized = normalizeWorkspacePath(path);
+    const existing = tabs.findIndex((t) => normalizeWorkspacePath(t.path) === normalized);
+    if (existing >= 0) {
+      setActiveTab(existing);
+      return;
+    }
+    if (sandboxIdRef.current) {
+      const { data } = await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "read", path: `${HOME_DIR}/${normalized}` } });
+      setTabs((prev) => [...prev, { path: normalized, content: data?.content || "", dirty: false }]);
+      setActiveTab(tabs.length);
+    }
   };
 
   const closeTab = (i: number) => {
