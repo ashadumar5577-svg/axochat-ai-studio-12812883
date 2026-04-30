@@ -603,16 +603,17 @@ export default function IDE() {
     appendActivity(`\x1b[38;5;208m→ Writing ${tab.path}...\x1b[0m`);
     try {
       const writeRes = await supabase.functions.invoke("sandbox-fs", {
-        body: { sandboxId: activeSandboxId, action: "write", path: `${HOME_DIR}/${tab.path}`, content: tab.content },
+        body: { sandboxId: activeSandboxId, action: "write", path: toSandboxPath(tab.path), content: tab.content },
       });
       if (writeRes.error || writeRes.data?.error) throw new Error(writeRes.data?.error || writeRes.error?.message);
 
       const ext = tab.path.split(".").pop()?.toLowerCase();
-      let cmd = `cat ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
-      if (ext === "py") cmd = `python3 ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
-      else if (ext === "js" || ext === "mjs") cmd = `node ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
-      else if (ext === "ts") cmd = `npx -y tsx ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
-      else if (ext === "sh") cmd = `bash ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
+      const sandboxPath = toSandboxPath(tab.path);
+      let cmd = `cat ${shellQuote(sandboxPath)}`;
+      if (ext === "py") cmd = `python3 ${shellQuote(sandboxPath)}`;
+      else if (ext === "js" || ext === "mjs") cmd = `node ${shellQuote(sandboxPath)}`;
+      else if (ext === "ts") cmd = `npx -y tsx ${shellQuote(sandboxPath)}`;
+      else if (ext === "sh") cmd = `bash ${shellQuote(sandboxPath)}`;
       else if (ext === "html") setPreviewHtml(tab.content);
 
       await streamSandboxCommand(cmd, { echo: true, forcePanel: true });
