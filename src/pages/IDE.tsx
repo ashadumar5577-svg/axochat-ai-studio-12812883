@@ -297,6 +297,7 @@ export default function IDE() {
           for (const ev of data.toolEvents) {
             appendActivity(`\x1b[36m🤖 ${ev.name}(${JSON.stringify(ev.args).slice(0, 80)})\x1b[0m`, false);
           }
+          await refreshWorkspaceTree();
         }
       }
     } catch (e: any) {
@@ -309,6 +310,7 @@ export default function IDE() {
   const stopSandbox = async () => {
     if (!sandboxId) return;
     appendActivity("\x1b[33m→ Stopping sandbox...\x1b[0m");
+    await saveAllWorkspace({ silent: true });
     await supabase.functions.invoke("sandbox-kill", { body: { sandboxId } });
     sandboxIdRef.current = null;
     setSandboxId(null);
