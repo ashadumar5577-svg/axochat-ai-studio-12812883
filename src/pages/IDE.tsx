@@ -258,7 +258,7 @@ export default function IDE() {
       );
       for (const tab of tabs) {
         await supabase.functions.invoke("sandbox-fs", {
-          body: { sandboxId: data.sandboxId, action: "write", path: `${HOME_DIR}/${normalizeWorkspacePath(tab.path)}`, content: tab.content },
+          body: { sandboxId: data.sandboxId, action: "write", path: toSandboxPath(tab.path), content: tab.content },
         });
       }
       await refreshWorkspaceTree(data.sandboxId);
@@ -548,7 +548,7 @@ export default function IDE() {
           if (!data?.length) setFileTree(treeFromPaths(tabs.map((t) => t.path)));
           return;
         }
-        const restored = data.map((row: any) => ({ path: normalizeWorkspacePath(row.path), content: row.content || "", dirty: false }));
+        const restored = data.map((row: any) => ({ path: normalizeStoredPath(row.path), content: row.content || "", dirty: false }));
         setTabs(restored);
         setActiveTab(0);
         setFileTree(treeFromPaths(restored.map((t) => t.path)));
