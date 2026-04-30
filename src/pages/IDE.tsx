@@ -665,7 +665,17 @@ export default function IDE() {
     const idea = promptWindow("Describe the SaaS app:", "Todo app with auth");
     if (!idea) return;
     appendActivity(`\x1b[38;5;208m→ Generating SaaS scaffold: ${idea}\x1b[0m`);
-    await streamSandboxCommand(`mkdir -p saas && cd saas && printf ${shellQuote(`# ${idea}\n`)} > README.md && npm init -y >/dev/null && echo "Project scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
+    await streamSandboxCommand(`mkdir -p saas/src && cd saas && printf ${shellQuote(`# ${idea}\n`)} > README.md && cat > package.json <<'EOF'
+{"scripts":{"dev":"vite --host 0.0.0.0"},"dependencies":{"@vitejs/plugin-react":"latest","vite":"latest","typescript":"latest","react":"latest","react-dom":"latest"},"devDependencies":{}}
+EOF
+cat > index.html <<'EOF'
+<div id="root"></div><script type="module" src="/src/App.jsx"></script>
+EOF
+cat > src/App.jsx <<'EOF'
+export default function App(){return <main style={{fontFamily:'system-ui',padding:32}}><h1>AxoX app</h1><p>Your AI-built app starts here.</p></main>}
+EOF
+echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
+    await refreshWorkspaceTree();
   };
 
   const onEditorMount: OnMount = (editor, monaco) => {
