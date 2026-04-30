@@ -69,6 +69,12 @@ const normalizeStoredPath = (path: string) => {
 };
 const toSandboxPath = (path: string) => path.startsWith("/") ? path.replace(/\/+/g, "/") : `${HOME_DIR}/${normalizeWorkspacePath(path)}`;
 const toTreePath = (path: string, root: string) => root === "/" ? path.replace(/\/+/g, "/") : normalizeWorkspacePath(path);
+const resolveExplorerPath = (input: string, root: string) => {
+  const clean = input.replace(/\/+/g, "/").replace(/^\.\//, "");
+  if (clean.startsWith("/")) return clean;
+  if (root === HOME_DIR) return normalizeWorkspacePath(clean);
+  return `${root.replace(/\/$/, "")}/${clean.replace(/^\/+/, "")}`.replace(/\/+/g, "/");
+};
 
 const treeFromPaths = (paths: string[]): FsNode[] => {
   const nodes = new Map<string, FsNode>();
