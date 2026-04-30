@@ -1,5 +1,5 @@
 import { Sandbox } from "npm:@e2b/code-interpreter@1.5.1";
-import { corsHeaders, jsonResponse, getUserAndAdmin } from "../_shared/auth.ts";
+import { corsHeaders, jsonResponse, getUserAndAdmin, getUserTier, tierLimits } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -19,6 +19,13 @@ Deno.serve(async (req) => {
     const { data: session } = await admin.from("sandbox_sessions")
       .select("*").eq("e2b_sandbox_id", sandboxId).eq("user_id", user.id).single();
     if (!session) return jsonResponse({ error: "Sandbox not found" }, 404);
+
+    const tier = await getUserTier(admin, user.id);
+    const limits = tierLimits(tier);
+    const { data: usage } = await admin.rpc("get_sandbox_usage", { _user_id: user.id });
+    const day = usage?.[0]?.day_seconds ?? 0;
+    const liveSeconds = Math.max(0, Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000));
+    if (day + liveSeconds >= limits.daily) return jsonResponse({ error: "Daily sandbox limit reached. Save your workspace and continue tomorrow or upgrade." }, 403);
 
     const E2B_API_KEY = Deno.env.get("E2B_API_KEY")!;
     const sbx = await Sandbox.connect(sandboxId, { apiKey: E2B_API_KEY });
