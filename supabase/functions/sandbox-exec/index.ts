@@ -11,9 +11,10 @@ Deno.serve(async (req) => {
 
     const { sandboxId, command, asRoot } = await req.json();
     if (!sandboxId || !command) return jsonResponse({ error: "Missing sandboxId or command" }, 400);
-    const rawCommand = String(command).trim();
-    if (/^(sudo\s+)?(su|bash|sh|zsh|fish)(\s+(-|--login|-i))?\s*$/.test(rawCommand)) {
-      return jsonResponse({ error: "Interactive shells are handled in the IDE prompt. Use sudo <command> or type sudo su in the terminal to switch prompt mode." }, 400);
+    const rawCommand = String(command);
+    // Block bare interactive shells (no PTY available)
+    if (/^(sudo\s+)?(su|bash|sh|zsh|fish)(\s+(-|--login|-i))?\s*$/.test(rawCommand.trim())) {
+      return jsonResponse({ error: "Interactive shells aren't supported. Use 'sudo <cmd>' or toggle root mode (sudo su)." }, 400);
     }
 
     const { data: session } = await admin.from("sandbox_sessions")
@@ -31,24 +32,47 @@ Deno.serve(async (req) => {
     const sbx = await Sandbox.connect(sandboxId, { apiKey: E2B_API_KEY });
 
     const encoder = new TextEncoder();
+    let handle: any = null;
+    let aborted = false;
+
+    // When the client disconnects (Ctrl+C), kill the running command on the sandbox.
+    req.signal.addEventListener("abort", () => {
+      aborted = true;
+      try { handle?.kill?.(); } catch { /* ignore */ }
+    });
+
     const stream = new ReadableStream({
       async start(controller) {
-        const send = (obj: unknown) =>
-          controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+        const send = (obj: unknown) => {
+          try { controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n")); } catch { /* closed */ }
+        };
         try {
-          await sbx.commands.run(rawCommand, {
-            timeoutMs: 120_000,
+          // Run as a background handle so we can kill it on client abort.
+          handle = await sbx.commands.run(rawCommand, {
+            background: true,
             user: asRoot ? "root" : "user",
+            timeoutMs: 60 * 60 * 1000, // 1 hour max — like a real VPS shell session
             onStdout: (data: string) => send({ stdout: data }),
             onStderr: (data: string) => send({ stderr: data }),
           });
+          await handle.wait();
+          if (aborted) send({ stderr: "\n^C\n" });
           send({ done: true });
         } catch (e) {
-          send({ stderr: `\n[error] ${e instanceof Error ? e.message : String(e)}\n` });
+          const msg = e instanceof Error ? e.message : String(e);
+          if (aborted || /killed|signal|aborted/i.test(msg)) {
+            send({ stderr: "\n^C\n" });
+          } else {
+            send({ stderr: `\n[error] ${msg}\n` });
+          }
           send({ done: true });
         } finally {
-          controller.close();
+          try { controller.close(); } catch { /* ignore */ }
         }
+      },
+      cancel() {
+        aborted = true;
+        try { handle?.kill?.(); } catch { /* ignore */ }
       },
     });
 
