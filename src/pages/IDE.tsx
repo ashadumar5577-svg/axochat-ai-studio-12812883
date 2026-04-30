@@ -33,8 +33,12 @@ import {
   RefreshCcw,
   FolderPlus,
   FolderOpen,
+  Home,
+  File,
+  ChevronRight,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { MessageContent } from "@/components/MessageContent";
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -59,6 +63,12 @@ const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "");
 const toTerminalText = (value: string) => value.replace(/\r?\n/g, "\r\n");
 const shellQuote = (value: string) => `'${value.replace(/'/g, "'\\''")}'`;
 const normalizeWorkspacePath = (path: string) => path.replace(/^\/home\/user\/?/, "").replace(/^\/+/, "").replace(/\/+/g, "/") || "main.py";
+const normalizeStoredPath = (path: string) => {
+  const clean = path.replace(/\/+/g, "/");
+  return clean.startsWith("/") && !clean.startsWith(HOME_DIR) ? clean : normalizeWorkspacePath(clean);
+};
+const toSandboxPath = (path: string) => path.startsWith("/") ? path.replace(/\/+/g, "/") : `${HOME_DIR}/${normalizeWorkspacePath(path)}`;
+const toTreePath = (path: string, root: string) => root === "/" ? path.replace(/\/+/g, "/") : normalizeWorkspacePath(path);
 
 const treeFromPaths = (paths: string[]): FsNode[] => {
   const nodes = new Map<string, FsNode>();
