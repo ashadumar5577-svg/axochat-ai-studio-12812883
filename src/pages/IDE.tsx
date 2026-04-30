@@ -911,22 +911,34 @@ echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
         <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-background">
           <div className="flex h-9 items-center justify-between border-b border-border px-3">
             <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><Folder className="h-3.5 w-3.5" /> Explorer</span>
-            <Button size="sm" variant="ghost" onClick={newTab} aria-label="New file"><Plus className="h-4 w-4" /></Button>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="ghost" onClick={() => saveAllWorkspace()} aria-label="Save workspace"><Save className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={() => refreshWorkspaceTree()} aria-label="Refresh files"><RefreshCcw className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={newFolder} aria-label="New folder"><FolderPlus className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={newTab} aria-label="New file"><Plus className="h-4 w-4" /></Button>
+            </div>
+          </div>
+          <div className="flex h-9 items-center gap-1 border-b border-border px-2 text-xs">
+            <Button size="sm" variant={explorerRoot === HOME_DIR ? "secondary" : "ghost"} onClick={() => setExplorerRoot(HOME_DIR)}><Home className="h-3.5 w-3.5" /> Workspace</Button>
+            <Button size="sm" variant={explorerRoot === "/" ? "secondary" : "ghost"} onClick={() => setExplorerRoot("/")}><FolderOpen className="h-3.5 w-3.5" /> Root</Button>
           </div>
           <div className="flex-1 overflow-y-auto py-1">
-            {tabs.map((t, i) => (
-              <button
-                key={`${t.path}-${i}`}
-                onClick={() => setActiveTab(i)}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-secondary ${activeTab === i ? "bg-secondary text-foreground" : "text-muted-foreground"}`}
-              >
-                <FileCode className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{t.path}{t.dirty && " •"}</span>
-                {tabs.length > 1 && (
-                  <X className="h-3.5 w-3.5 shrink-0 hover:text-destructive" onClick={(e) => { e.stopPropagation(); closeTab(i); }} />
-                )}
-              </button>
-            ))}
+            {restoring && <div className="px-3 py-2 text-xs text-muted-foreground">Restoring saved files...</div>}
+            {visibleTree.map((node) => {
+              const active = tabs[activeTab] && normalizeStoredPath(tabs[activeTab].path) === normalizeStoredPath(node.path);
+              return (
+                <button
+                  key={node.path}
+                  onClick={() => node.type === "dir" ? toggleDir(node.path) : openFileFromTree(node.path)}
+                  className={`flex w-full items-center gap-1 px-2 py-1.5 text-left text-xs hover:bg-secondary ${active ? "bg-secondary text-foreground" : "text-muted-foreground"}`}
+                  style={{ paddingLeft: 8 + node.depth * 14 }}
+                >
+                  {node.type === "dir" ? <ChevronRight className={`h-3 w-3 shrink-0 ${expandedDirs.has(node.path) ? "rotate-90" : ""}`} /> : <span className="w-3" />}
+                  {node.type === "dir" ? <Folder className="h-3.5 w-3.5 shrink-0" /> : <File className="h-3.5 w-3.5 shrink-0" />}
+                  <span className="min-w-0 flex-1 truncate">{node.name}</span>
+                </button>
+              );
+            })}
           </div>
         </aside>
 
