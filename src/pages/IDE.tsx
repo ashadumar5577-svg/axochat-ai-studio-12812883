@@ -398,6 +398,8 @@ export default function IDE() {
       }
     };
 
+    const abort = new AbortController();
+    cmdAbortRef.current = abort;
     try {
       const resp = await fetch(`${FN_URL}/sandbox-exec`, {
         method: "POST",
@@ -407,6 +409,7 @@ export default function IDE() {
           apikey: PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ sandboxId: activeSandboxId, command: effectiveCommand, asRoot: rootModeRef.current }),
+        signal: abort.signal,
       });
 
       if (!resp.ok || !resp.body) {
