@@ -812,6 +812,23 @@ echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
     return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
   };
 
+  const toggleDir = (path: string) => {
+    setExpandedDirs((prev) => {
+      const next = new Set(prev);
+      next.has(path) ? next.delete(path) : next.add(path);
+      return next;
+    });
+  };
+
+  const visibleTree = fileTree.filter((node) => {
+    const parts = node.path.split("/").filter(Boolean);
+    for (let i = 1; i < parts.length; i++) {
+      const prefix = node.path.startsWith("/") ? `/${parts.slice(0, i).join("/")}` : parts.slice(0, i).join("/");
+      if (!expandedDirs.has(prefix)) return false;
+    }
+    return true;
+  });
+
   if (loading) {
     return <div className="flex h-screen items-center justify-center bg-background text-foreground"><Loader2 className="animate-spin" /></div>;
   }
