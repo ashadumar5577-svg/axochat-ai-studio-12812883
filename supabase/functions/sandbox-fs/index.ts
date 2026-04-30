@@ -64,6 +64,18 @@ Deno.serve(async (req) => {
       const entries = await walkTree(sbx, requestedPath, 0, requestedPath === "/" ? 2 : 6);
       return jsonResponse({ entries });
     }
+    if (action === "snapshot") {
+      const entries = await walkTree(sbx, "/home/user", 0, 8);
+      const rows: Array<{ user_id: string; path: string; content: string }> = [];
+      for (const entry of entries.filter((item) => item.type === "file").slice(0, 250)) {
+        try {
+          const content = String(await sbx.files.read(entry.path));
+          if (content.length <= 1_000_000) rows.push({ user_id: user.id, path: entry.path.replace(/^\/home\/user\/?/, ""), content });
+        } catch (_) { /* binary or unreadable file */ }
+      }
+      if (rows.length) await admin.from("ide_files").upsert(rows, { onConflict: "user_id,path" });
+      return jsonResponse({ ok: true, saved: rows.length, entries });
+    }
     return jsonResponse({ error: "Unknown action" }, 400);
   } catch (e) {
     console.error("sandbox-fs error", e);
