@@ -453,13 +453,15 @@ export default function IDE() {
       return { ok, stdout, stderr };
     } catch (e: any) {
       ok = false;
-      const message = `${e.message || "Command failed"}\n`;
+      const isAbort = e?.name === "AbortError" || /abort/i.test(e?.message || "");
+      const message = isAbort ? "^C\n" : `${e.message || "Command failed"}\n`;
       stderr += message;
       appendResult(message, "stderr");
-      setRunStatus("error");
-      toast.error(e.message || "Command failed");
+      setRunStatus(isAbort ? "idle" : "error");
+      if (!isAbort) toast.error(e.message || "Command failed");
       return { ok, stdout, stderr };
     } finally {
+      cmdAbortRef.current = null;
       setRunning(false);
       runningRef.current = false;
       if ((stdout || stderr) && !(stdout + stderr).endsWith("\n")) xtermRef.current?.write("\r\n");
