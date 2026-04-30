@@ -437,6 +437,9 @@ export default function IDE() {
       }
 
       await refreshWorkspaceTree(activeSandboxId);
+      if (ok) {
+        await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: activeSandboxId, action: "snapshot" } }).catch(() => null);
+      }
 
       setRunStatus(ok ? "success" : "error");
       setAgentLog((prev) => [...prev.slice(-120), ok ? "✓ Command finished" : "✗ Command failed"]);
@@ -454,7 +457,7 @@ export default function IDE() {
       runningRef.current = false;
       if ((stdout || stderr) && !(stdout + stderr).endsWith("\n")) xtermRef.current?.write("\r\n");
     }
-  }, [appendResult, refreshWorkspaceTree, sandboxId, session?.access_token, startSandbox]);
+  }, [appendResult, refreshWorkspaceTree, session?.access_token, startSandbox]);
 
   useEffect(() => {
     if (!termRef.current || xtermRef.current) return;
