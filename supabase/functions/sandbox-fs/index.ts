@@ -60,7 +60,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ entries });
     }
     if (action === "tree") {
-      const entries = await walkTree(sbx, path || "/home/user");
+      const requestedPath = path || "/home/user";
+      const entries = await walkTree(sbx, requestedPath, 0, requestedPath === "/" ? 2 : 6);
       return jsonResponse({ entries });
     }
     return jsonResponse({ error: "Unknown action" }, 400);
