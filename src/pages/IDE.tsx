@@ -569,6 +569,16 @@ export default function IDE() {
   }, [user]);
 
   useEffect(() => {
+    if (!user || restoring || !tabs.some((tab) => tab.dirty)) return;
+    const timer = window.setTimeout(() => saveAllWorkspace({ silent: true }), 2500);
+    return () => window.clearTimeout(timer);
+  }, [saveAllWorkspace, restoring, tabs, user]);
+
+  useEffect(() => {
+    refreshWorkspaceTree();
+  }, [explorerRoot, refreshWorkspaceTree]);
+
+  useEffect(() => {
     if (!user) return;
     supabase.functions.invoke("github-api", { body: { action: "status" } }).then(({ data }) => {
       if (data?.connected) {
