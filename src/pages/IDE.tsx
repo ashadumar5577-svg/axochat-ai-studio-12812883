@@ -491,37 +491,82 @@ export default function IDE() {
     term.writeln("\x1b[38;5;208m╔════════════════════════════════════════╗\x1b[0m");
     term.writeln("\x1b[38;5;208m║        AxoX IDE Environment           ║\x1b[0m");
     term.writeln("\x1b[38;5;208m╚════════════════════════════════════════╝\x1b[0m");
-    term.writeln("Type a command and press Enter. The sandbox starts automatically.");
+    term.writeln("Ubuntu-style shell. Press \x1b[33mCtrl+C\x1b[0m to interrupt. Use \x1b[33m↑/↓\x1b[0m for history.");
     term.writeln("");
     xtermRef.current = term;
     fitRef.current = fit;
     prompt();
 
+    const redrawLine = () => {
+      // Clear current line then redraw prompt + buffer
+      term.write("\r\x1b[2K");
+      prompt();
+      term.write(currentLineRef.current);
+    };
+
     term.onData((data) => {
-      for (const ch of data) {
+      let i = 0;
+      while (i < data.length) {
+        const ch = data[i];
         const code = ch.charCodeAt(0);
+
+        // Escape sequences (arrows): ESC [ A/B/C/D
+        if (code === 27 && data[i + 1] === "[" && data[i + 2]) {
+          const key = data[i + 2];
+          i += 3;
+          if (runningRef.current) continue;
+          if (key === "A") {
+            // Up — previous history
+            if (historyRef.current.length === 0) continue;
+            if (historyIdxRef.current === -1) historyIdxRef.current = historyRef.current.length;
+            historyIdxRef.current = Math.max(0, historyIdxRef.current - 1);
+            currentLineRef.current = historyRef.current[historyIdxRef.current] || "";
+            redrawLine();
+          } else if (key === "B") {
+            // Down — next history
+            if (historyIdxRef.current === -1) continue;
+            historyIdxRef.current = Math.min(historyRef.current.length, historyIdxRef.current + 1);
+            currentLineRef.current = historyRef.current[historyIdxRef.current] || "";
+            redrawLine();
+          }
+          continue;
+        }
+
         if (code === 3) {
-          currentLineRef.current = "";
-          term.write("^C\r\n");
-          prompt();
+          // Ctrl+C — abort running command, otherwise just clear input
+          if (runningRef.current && cmdAbortRef.current) {
+            cmdAbortRef.current.abort();
+            term.write("^C\r\n");
+          } else {
+            term.write("^C\r\n");
+            currentLineRef.current = "";
+            historyIdxRef.current = -1;
+            prompt();
+          }
         } else if (code === 13) {
+          if (runningRef.current) { i++; continue; }
           term.write("\r\n");
-          const cmd = currentLineRef.current.trim();
+          const cmd = currentLineRef.current;
           currentLineRef.current = "";
-          if (!cmd) {
+          historyIdxRef.current = -1;
+          if (!cmd.trim()) {
             prompt();
           } else {
+            if (historyRef.current[historyRef.current.length - 1] !== cmd) historyRef.current.push(cmd);
             (window as any).__axoxRunCmd?.(cmd).finally(() => prompt());
           }
         } else if (code === 127) {
+          if (runningRef.current) { i++; continue; }
           if (currentLineRef.current.length > 0) {
             currentLineRef.current = currentLineRef.current.slice(0, -1);
             term.write("\b \b");
           }
         } else if (code >= 32) {
+          if (runningRef.current) { i++; continue; }
           currentLineRef.current += ch;
           term.write(ch);
         }
+        i++;
       }
     });
 
