@@ -3,6 +3,12 @@ import { corsHeaders, jsonResponse, getUserAndAdmin } from "../_shared/auth.ts";
 
 const shellQuote = (value: string) => `'${String(value).replace(/'/g, "'\\''")}'`;
 
+const isSystemPath = (path: string) => {
+  const normalized = path.replace(/\/+/g, "/");
+  if (normalized === "/") return false;
+  return ["/bin", "/boot", "/dev", "/etc", "/lib", "/lib64", "/proc", "/run", "/sbin", "/sys", "/usr", "/var"].some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
+};
+
 async function walkTree(sbx: any, root: string, depth = 0, maxDepth = 4): Promise<any[]> {
   if (depth > maxDepth) return [];
   const entries = await sbx.files.list(root).catch(() => []);
@@ -13,7 +19,7 @@ async function walkTree(sbx: any, root: string, depth = 0, maxDepth = 4): Promis
     const path = entry.path || `${root.replace(/\/$/, "")}/${name}`;
     const type = entry.type === "dir" || entry.isDir ? "dir" : "file";
     out.push({ path, name, type });
-    if (type === "dir") out.push(...await walkTree(sbx, path, depth + 1, maxDepth));
+    if (type === "dir" && !isSystemPath(path)) out.push(...await walkTree(sbx, path, depth + 1, maxDepth));
   }
   return out;
 }
