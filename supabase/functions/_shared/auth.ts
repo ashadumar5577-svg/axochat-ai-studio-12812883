@@ -38,9 +38,9 @@ export async function getUserTier(admin: any, userId: string): Promise<"free" | 
 }
 
 export function tierLimits(tier: "free" | "premium" | "axo_plus") {
-  if (tier === "axo_plus") return { weekly: Infinity, daily: Infinity };
-  if (tier === "premium") return { weekly: Infinity, daily: 12 * 60 * 60 }; // 12h/day
-  return { weekly: Infinity, daily: 60 * 60 }; // 1h/day
+  if (tier === "axo_plus") return { weekly: Number.MAX_SAFE_INTEGER, daily: 12 * 60 * 60 };
+  if (tier === "premium") return { weekly: Number.MAX_SAFE_INTEGER, daily: 12 * 60 * 60 }; // 12h/day quota
+  return { weekly: Number.MAX_SAFE_INTEGER, daily: 60 * 60 }; // 1h/day quota
 }
 
 export function tierResources(tier: "free" | "premium" | "axo_plus") {
