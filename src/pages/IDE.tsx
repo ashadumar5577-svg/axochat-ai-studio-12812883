@@ -133,6 +133,8 @@ export default function IDE() {
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [rootMode, setRootMode] = useState(false);
+  const [explorerRoot, setExplorerRoot] = useState(HOME_DIR);
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(["/", HOME_DIR, "src"]));
 
   useEffect(() => {
     cwdRef.current = cwd;
@@ -164,8 +166,8 @@ export default function IDE() {
     xtermRef.current?.write(stream === "stderr" ? `\x1b[31m${toTerminalText(text)}\x1b[0m` : toTerminalText(text));
   }, []);
 
-  const refreshWorkspaceTree = useCallback(async (activeSandboxId = sandboxIdRef.current) => {
-    const saved = tabs.map((t) => normalizeWorkspacePath(t.path));
+  const refreshWorkspaceTree = useCallback(async (activeSandboxId = sandboxIdRef.current, root = explorerRoot) => {
+    const saved = tabs.map((t) => root === "/" ? toSandboxPath(t.path) : normalizeWorkspacePath(t.path));
     if (!activeSandboxId) {
       setFileTree(treeFromPaths(saved));
       return;
@@ -173,15 +175,15 @@ export default function IDE() {
 
     try {
       const { data, error } = await supabase.functions.invoke("sandbox-fs", {
-        body: { sandboxId: activeSandboxId, action: "tree", path: HOME_DIR },
+        body: { sandboxId: activeSandboxId, action: "tree", path: root },
       });
       if (error || data?.error) throw new Error(data?.error || error?.message);
-      const remote = (data.entries || []).map((e: any) => normalizeWorkspacePath(e.path)).filter(Boolean);
+      const remote = (data.entries || []).map((e: any) => toTreePath(e.path, root)).filter(Boolean);
       setFileTree(treeFromPaths([...saved, ...remote]));
     } catch {
       setFileTree(treeFromPaths(saved));
     }
-  }, [tabs]);
+  }, [explorerRoot, tabs]);
 
   const saveTabToCloud = useCallback(async (tab: FileTab) => {
     if (!user) return;
