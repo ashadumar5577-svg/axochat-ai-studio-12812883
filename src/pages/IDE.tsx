@@ -73,10 +73,10 @@ const toTreePath = (path: string, root: string) => root === "/" ? path.replace(/
 const treeFromPaths = (paths: string[]): FsNode[] => {
   const nodes = new Map<string, FsNode>();
   for (const raw of paths) {
-    const path = normalizeWorkspacePath(raw);
+    const path = raw.startsWith("/") ? raw.replace(/\/+/g, "/") : normalizeWorkspacePath(raw);
     const parts = path.split("/").filter(Boolean);
     parts.forEach((part, idx) => {
-      const itemPath = parts.slice(0, idx + 1).join("/");
+      const itemPath = path.startsWith("/") ? `/${parts.slice(0, idx + 1).join("/")}` : parts.slice(0, idx + 1).join("/");
       const type = idx === parts.length - 1 ? "file" : "dir";
       if (!nodes.has(itemPath)) nodes.set(itemPath, { path: itemPath, name: part, type, depth: idx, saved: true });
     });
