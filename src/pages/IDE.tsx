@@ -1050,7 +1050,9 @@ echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
                 {chat.map((m, i) => (
                   <div key={i} className={`rounded-md border p-3 ${m.role === "user" ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}>
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{m.role === "user" ? "You" : "Copilot"}</div>
-                    <div className="whitespace-pre-wrap text-foreground">{m.content}</div>
+                    <div className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-primary prose-pre:bg-secondary">
+                      <MessageContent content={m.content} />
+                    </div>
                     {m.events && m.events.length > 0 && (
                       <div className="mt-2 space-y-1 border-t border-border pt-2">
                         {m.events.map((ev, j) => (
@@ -1097,6 +1099,7 @@ echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
         <span>{sandboxId ? "AxoX sandbox connected" : "AxoX sandbox will auto-start on first command"}</span>
         <span>{cwd}</span>
         <span className="ml-auto">VS Code-style cloud workspace</span>
+      </div>
 
       {osPickerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setOsPickerOpen(false)}>
@@ -1134,7 +1137,6 @@ echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
           </div>
         </div>
       )}
-    </div>
     </div>
   );
 }
