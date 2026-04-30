@@ -106,6 +106,9 @@ export default function IDE() {
   const runningRef = useRef(false);
   const currentLineRef = useRef("");
   const rootModeRef = useRef(false);
+  const cmdAbortRef = useRef<AbortController | null>(null);
+  const historyRef = useRef<string[]>([]);
+  const historyIdxRef = useRef<number>(-1);
 
   const [sandboxId, setSandboxId] = useState<string | null>(null);
   const [tier, setTier] = useState<string>("free");
