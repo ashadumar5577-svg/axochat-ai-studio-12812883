@@ -189,7 +189,7 @@ export default function IDE() {
 
   const saveTabToCloud = useCallback(async (tab: FileTab) => {
     if (!user) return;
-    const path = normalizeWorkspacePath(tab.path);
+    const path = normalizeStoredPath(tab.path);
     const { error } = await supabase.from("ide_files" as any).upsert({
       user_id: user.id,
       path,
@@ -203,6 +203,9 @@ export default function IDE() {
     setSaving(true);
     try {
       await Promise.all(tabs.map(saveTabToCloud));
+      if (sandboxIdRef.current) {
+        await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "snapshot" } });
+      }
       setTabs((prev) => prev.map((t) => ({ ...t, dirty: false })));
       await refreshWorkspaceTree();
       if (!options?.silent) toast.success("Workspace saved");
