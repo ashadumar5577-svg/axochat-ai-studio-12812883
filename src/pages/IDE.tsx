@@ -69,6 +69,7 @@ const normalizeStoredPath = (path: string) => {
 };
 const toSandboxPath = (path: string) => path.startsWith("/") ? path.replace(/\/+/g, "/") : `${HOME_DIR}/${normalizeWorkspacePath(path)}`;
 const toTreePath = (path: string, root: string) => root === "/" ? path.replace(/\/+/g, "/") : normalizeWorkspacePath(path);
+const comparablePath = (path: string) => normalizeStoredPath(path);
 const resolveExplorerPath = (input: string, root: string) => {
   const clean = input.replace(/\/+/g, "/").replace(/^\.\//, "");
   if (clean.startsWith("/")) return clean;
@@ -925,7 +926,7 @@ echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
           <div className="flex-1 overflow-y-auto py-1">
             {restoring && <div className="px-3 py-2 text-xs text-muted-foreground">Restoring saved files...</div>}
             {visibleTree.map((node) => {
-              const active = tabs[activeTab] && normalizeStoredPath(tabs[activeTab].path) === normalizeStoredPath(node.path);
+              const active = tabs[activeTab] && comparablePath(tabs[activeTab].path) === comparablePath(node.path);
               return (
                 <button
                   key={node.path}
