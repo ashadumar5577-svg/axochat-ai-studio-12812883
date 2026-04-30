@@ -82,9 +82,10 @@ EOF`, { user: "root", timeoutMs: 10_000 }).catch(console.warn);
       os: osInfo,
       resources,
       usage: { week, day },
+      lifetimeSeconds: Math.floor(sandboxTimeoutMs / 1000),
       limits: {
-        weekly: limits.weekly === Infinity ? null : limits.weekly,
-        daily: limits.daily === Infinity ? null : limits.daily,
+        weekly: limits.weekly >= Number.MAX_SAFE_INTEGER ? null : limits.weekly,
+        daily: limits.daily >= Number.MAX_SAFE_INTEGER ? null : limits.daily,
       },
     });
   } catch (e) {
