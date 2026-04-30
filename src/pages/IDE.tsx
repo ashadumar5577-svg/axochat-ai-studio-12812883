@@ -180,7 +180,7 @@ export default function IDE() {
         body: { sandboxId: activeSandboxId, action: "tree", path: root },
       });
       if (error || data?.error) throw new Error(data?.error || error?.message);
-      const remote = (data.entries || []).map((e: any) => toTreePath(e.path, root)).filter(Boolean);
+      const remote = (data.entries || []).map((e: any) => `${toTreePath(e.path, root)}${e.type === "dir" ? "/" : ""}`).filter(Boolean);
       setFileTree(treeFromPaths([...saved, ...remote]));
     } catch {
       setFileTree(treeFromPaths(saved));
