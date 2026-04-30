@@ -1,7 +1,8 @@
 import { Sandbox } from "npm:@e2b/code-interpreter@1.5.1";
 import { corsHeaders, jsonResponse, getUserAndAdmin, getUserTier, tierLimits, tierResources } from "../_shared/auth.ts";
 
-// E2B's public runtime is Ubuntu-based; Debian selections are bootstrapped with a matching userland marker.
+// E2B runs Linux sandboxes with a maximum 1h lifetime per boot. AxoX enforces longer paid quotas by
+// allowing users to create fresh 1h sandboxes while keeping their workspace persisted in Lovable Cloud.
 const OS_TEMPLATES: Record<string, string> = {
   "ubuntu-22.04": "base",
   "ubuntu-24.04": "base",
@@ -42,9 +43,12 @@ Deno.serve(async (req) => {
     if (!E2B_API_KEY) return jsonResponse({ error: "E2B not configured" }, 500);
 
     const e2bTemplate = OS_TEMPLATES[template];
+    const remainingSeconds = Math.max(60, limits.daily - day);
+    const sandboxTimeoutMs = Math.min(remainingSeconds * 1000, 60 * 60 * 1000);
+
     const sbx = await Sandbox.create(e2bTemplate, {
       apiKey: E2B_API_KEY,
-      timeoutMs: Math.min(limits.daily === Infinity ? 12 * 60 * 60 * 1000 : limits.daily * 1000, 12 * 60 * 60 * 1000),
+      timeoutMs: sandboxTimeoutMs,
       metadata: { os: template, tier, userId: user.id },
     });
     const sandboxId = sbx.sandboxId;
@@ -78,9 +82,10 @@ EOF`, { user: "root", timeoutMs: 10_000 }).catch(console.warn);
       os: osInfo,
       resources,
       usage: { week, day },
+      lifetimeSeconds: Math.floor(sandboxTimeoutMs / 1000),
       limits: {
-        weekly: limits.weekly === Infinity ? null : limits.weekly,
-        daily: limits.daily === Infinity ? null : limits.daily,
+        weekly: limits.weekly >= Number.MAX_SAFE_INTEGER ? null : limits.weekly,
+        daily: limits.daily >= Number.MAX_SAFE_INTEGER ? null : limits.daily,
       },
     });
   } catch (e) {

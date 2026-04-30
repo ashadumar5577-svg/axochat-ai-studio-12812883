@@ -3,6 +3,12 @@ import { corsHeaders, jsonResponse, getUserAndAdmin } from "../_shared/auth.ts";
 
 const shellQuote = (value: string) => `'${String(value).replace(/'/g, "'\\''")}'`;
 
+const isSystemPath = (path: string) => {
+  const normalized = path.replace(/\/+/g, "/");
+  if (normalized === "/") return false;
+  return ["/bin", "/boot", "/dev", "/etc", "/lib", "/lib64", "/proc", "/run", "/sbin", "/sys", "/usr", "/var"].some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
+};
+
 async function walkTree(sbx: any, root: string, depth = 0, maxDepth = 4): Promise<any[]> {
   if (depth > maxDepth) return [];
   const entries = await sbx.files.list(root).catch(() => []);
@@ -13,7 +19,7 @@ async function walkTree(sbx: any, root: string, depth = 0, maxDepth = 4): Promis
     const path = entry.path || `${root.replace(/\/$/, "")}/${name}`;
     const type = entry.type === "dir" || entry.isDir ? "dir" : "file";
     out.push({ path, name, type });
-    if (type === "dir") out.push(...await walkTree(sbx, path, depth + 1, maxDepth));
+    if (type === "dir" && !isSystemPath(path)) out.push(...await walkTree(sbx, path, depth + 1, maxDepth));
   }
   return out;
 }
@@ -54,8 +60,21 @@ Deno.serve(async (req) => {
       return jsonResponse({ entries });
     }
     if (action === "tree") {
-      const entries = await walkTree(sbx, path || "/home/user");
+      const requestedPath = path || "/home/user";
+      const entries = await walkTree(sbx, requestedPath, 0, requestedPath === "/" ? 2 : 6);
       return jsonResponse({ entries });
+    }
+    if (action === "snapshot") {
+      const entries = await walkTree(sbx, "/home/user", 0, 8);
+      const rows: Array<{ user_id: string; path: string; content: string }> = [];
+      for (const entry of entries.filter((item) => item.type === "file").slice(0, 250)) {
+        try {
+          const content = String(await sbx.files.read(entry.path));
+          if (content.length <= 1_000_000) rows.push({ user_id: user.id, path: entry.path.replace(/^\/home\/user\/?/, ""), content });
+        } catch (_) { /* binary or unreadable file */ }
+      }
+      if (rows.length) await admin.from("ide_files").upsert(rows, { onConflict: "user_id,path" });
+      return jsonResponse({ ok: true, saved: rows.length, entries });
     }
     return jsonResponse({ error: "Unknown action" }, 400);
   } catch (e) {

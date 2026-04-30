@@ -33,8 +33,12 @@ import {
   RefreshCcw,
   FolderPlus,
   FolderOpen,
+  Home,
+  File,
+  ChevronRight,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { MessageContent } from "@/components/MessageContent";
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -59,15 +63,30 @@ const stripAnsi = (value: string) => value.replace(/\x1b\[[0-9;]*m/g, "");
 const toTerminalText = (value: string) => value.replace(/\r?\n/g, "\r\n");
 const shellQuote = (value: string) => `'${value.replace(/'/g, "'\\''")}'`;
 const normalizeWorkspacePath = (path: string) => path.replace(/^\/home\/user\/?/, "").replace(/^\/+/, "").replace(/\/+/g, "/") || "main.py";
+const normalizeStoredPath = (path: string) => {
+  const clean = path.replace(/\/+/g, "/");
+  return clean.startsWith("/") && !clean.startsWith(HOME_DIR) ? clean : normalizeWorkspacePath(clean);
+};
+const toSandboxPath = (path: string) => path.startsWith("/") ? path.replace(/\/+/g, "/") : `${HOME_DIR}/${normalizeWorkspacePath(path)}`;
+const toTreePath = (path: string, root: string) => root === "/" ? path.replace(/\/+/g, "/") : normalizeWorkspacePath(path);
+const comparablePath = (path: string) => normalizeStoredPath(path);
+const resolveExplorerPath = (input: string, root: string) => {
+  const clean = input.replace(/\/+/g, "/").replace(/^\.\//, "");
+  if (clean.startsWith("/")) return clean;
+  if (root === HOME_DIR) return normalizeWorkspacePath(clean);
+  return `${root.replace(/\/$/, "")}/${clean.replace(/^\/+/, "")}`.replace(/\/+/g, "/");
+};
 
 const treeFromPaths = (paths: string[]): FsNode[] => {
   const nodes = new Map<string, FsNode>();
   for (const raw of paths) {
-    const path = normalizeWorkspacePath(raw);
+    const dirMarker = raw.endsWith("/");
+    const cleanRaw = dirMarker ? raw.slice(0, -1) : raw;
+    const path = cleanRaw.startsWith("/") ? cleanRaw.replace(/\/+/g, "/") : normalizeWorkspacePath(cleanRaw);
     const parts = path.split("/").filter(Boolean);
     parts.forEach((part, idx) => {
-      const itemPath = parts.slice(0, idx + 1).join("/");
-      const type = idx === parts.length - 1 ? "file" : "dir";
+      const itemPath = path.startsWith("/") ? `/${parts.slice(0, idx + 1).join("/")}` : parts.slice(0, idx + 1).join("/");
+      const type = idx === parts.length - 1 && !dirMarker ? "file" : "dir";
       if (!nodes.has(itemPath)) nodes.set(itemPath, { path: itemPath, name: part, type, depth: idx, saved: true });
     });
   }
@@ -123,6 +142,8 @@ export default function IDE() {
   const [saving, setSaving] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [rootMode, setRootMode] = useState(false);
+  const [explorerRoot, setExplorerRoot] = useState(HOME_DIR);
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(["/", HOME_DIR, "src"]));
 
   useEffect(() => {
     cwdRef.current = cwd;
@@ -154,8 +175,8 @@ export default function IDE() {
     xtermRef.current?.write(stream === "stderr" ? `\x1b[31m${toTerminalText(text)}\x1b[0m` : toTerminalText(text));
   }, []);
 
-  const refreshWorkspaceTree = useCallback(async (activeSandboxId = sandboxIdRef.current) => {
-    const saved = tabs.map((t) => normalizeWorkspacePath(t.path));
+  const refreshWorkspaceTree = useCallback(async (activeSandboxId = sandboxIdRef.current, root = explorerRoot) => {
+    const saved = tabs.map((t) => root === "/" ? toSandboxPath(t.path) : normalizeWorkspacePath(t.path));
     if (!activeSandboxId) {
       setFileTree(treeFromPaths(saved));
       return;
@@ -163,19 +184,19 @@ export default function IDE() {
 
     try {
       const { data, error } = await supabase.functions.invoke("sandbox-fs", {
-        body: { sandboxId: activeSandboxId, action: "tree", path: HOME_DIR },
+        body: { sandboxId: activeSandboxId, action: "tree", path: root },
       });
       if (error || data?.error) throw new Error(data?.error || error?.message);
-      const remote = (data.entries || []).map((e: any) => normalizeWorkspacePath(e.path)).filter(Boolean);
+      const remote = (data.entries || []).map((e: any) => `${toTreePath(e.path, root)}${e.type === "dir" ? "/" : ""}`).filter(Boolean);
       setFileTree(treeFromPaths([...saved, ...remote]));
     } catch {
       setFileTree(treeFromPaths(saved));
     }
-  }, [tabs]);
+  }, [explorerRoot, tabs]);
 
   const saveTabToCloud = useCallback(async (tab: FileTab) => {
     if (!user) return;
-    const path = normalizeWorkspacePath(tab.path);
+    const path = normalizeStoredPath(tab.path);
     const { error } = await supabase.from("ide_files" as any).upsert({
       user_id: user.id,
       path,
@@ -189,6 +210,9 @@ export default function IDE() {
     setSaving(true);
     try {
       await Promise.all(tabs.map(saveTabToCloud));
+      if (sandboxIdRef.current) {
+        await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "snapshot" } });
+      }
       setTabs((prev) => prev.map((t) => ({ ...t, dirty: false })));
       await refreshWorkspaceTree();
       if (!options?.silent) toast.success("Workspace saved");
@@ -235,7 +259,7 @@ export default function IDE() {
       );
       for (const tab of tabs) {
         await supabase.functions.invoke("sandbox-fs", {
-          body: { sandboxId: data.sandboxId, action: "write", path: `${HOME_DIR}/${normalizeWorkspacePath(tab.path)}`, content: tab.content },
+          body: { sandboxId: data.sandboxId, action: "write", path: toSandboxPath(tab.path), content: tab.content },
         });
       }
       await refreshWorkspaceTree(data.sandboxId);
@@ -274,6 +298,7 @@ export default function IDE() {
           for (const ev of data.toolEvents) {
             appendActivity(`\x1b[36m🤖 ${ev.name}(${JSON.stringify(ev.args).slice(0, 80)})\x1b[0m`, false);
           }
+          await refreshWorkspaceTree();
         }
       }
     } catch (e: any) {
@@ -286,6 +311,7 @@ export default function IDE() {
   const stopSandbox = async () => {
     if (!sandboxId) return;
     appendActivity("\x1b[33m→ Stopping sandbox...\x1b[0m");
+    await saveAllWorkspace({ silent: true });
     await supabase.functions.invoke("sandbox-kill", { body: { sandboxId } });
     sandboxIdRef.current = null;
     setSandboxId(null);
@@ -412,6 +438,9 @@ export default function IDE() {
       }
 
       await refreshWorkspaceTree(activeSandboxId);
+      if (ok) {
+        await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: activeSandboxId, action: "snapshot" } }).catch(() => null);
+      }
 
       setRunStatus(ok ? "success" : "error");
       setAgentLog((prev) => [...prev.slice(-120), ok ? "✓ Command finished" : "✗ Command failed"]);
@@ -429,7 +458,7 @@ export default function IDE() {
       runningRef.current = false;
       if ((stdout || stderr) && !(stdout + stderr).endsWith("\n")) xtermRef.current?.write("\r\n");
     }
-  }, [appendResult, refreshWorkspaceTree, sandboxId, session?.access_token, startSandbox]);
+  }, [appendResult, refreshWorkspaceTree, session?.access_token, startSandbox]);
 
   useEffect(() => {
     if (!termRef.current || xtermRef.current) return;
@@ -525,7 +554,7 @@ export default function IDE() {
           if (!data?.length) setFileTree(treeFromPaths(tabs.map((t) => t.path)));
           return;
         }
-        const restored = data.map((row: any) => ({ path: normalizeWorkspacePath(row.path), content: row.content || "", dirty: false }));
+        const restored = data.map((row: any) => ({ path: normalizeStoredPath(row.path), content: row.content || "", dirty: false }));
         setTabs(restored);
         setActiveTab(0);
         setFileTree(treeFromPaths(restored.map((t) => t.path)));
@@ -539,6 +568,16 @@ export default function IDE() {
     restoreWorkspace();
     return () => { cancelled = true; };
   }, [user]);
+
+  useEffect(() => {
+    if (!user || restoring || !tabs.some((tab) => tab.dirty)) return;
+    const timer = window.setTimeout(() => saveAllWorkspace({ silent: true }), 2500);
+    return () => window.clearTimeout(timer);
+  }, [saveAllWorkspace, restoring, tabs, user]);
+
+  useEffect(() => {
+    refreshWorkspaceTree();
+  }, [explorerRoot, refreshWorkspaceTree]);
 
   useEffect(() => {
     if (!user) return;
@@ -575,16 +614,17 @@ export default function IDE() {
     appendActivity(`\x1b[38;5;208m→ Writing ${tab.path}...\x1b[0m`);
     try {
       const writeRes = await supabase.functions.invoke("sandbox-fs", {
-        body: { sandboxId: activeSandboxId, action: "write", path: `${HOME_DIR}/${tab.path}`, content: tab.content },
+        body: { sandboxId: activeSandboxId, action: "write", path: toSandboxPath(tab.path), content: tab.content },
       });
       if (writeRes.error || writeRes.data?.error) throw new Error(writeRes.data?.error || writeRes.error?.message);
 
       const ext = tab.path.split(".").pop()?.toLowerCase();
-      let cmd = `cat ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
-      if (ext === "py") cmd = `python3 ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
-      else if (ext === "js" || ext === "mjs") cmd = `node ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
-      else if (ext === "ts") cmd = `npx -y tsx ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
-      else if (ext === "sh") cmd = `bash ${shellQuote(`${HOME_DIR}/${tab.path}`)}`;
+      const sandboxPath = toSandboxPath(tab.path);
+      let cmd = `cat ${shellQuote(sandboxPath)}`;
+      if (ext === "py") cmd = `python3 ${shellQuote(sandboxPath)}`;
+      else if (ext === "js" || ext === "mjs") cmd = `node ${shellQuote(sandboxPath)}`;
+      else if (ext === "ts") cmd = `npx -y tsx ${shellQuote(sandboxPath)}`;
+      else if (ext === "sh") cmd = `bash ${shellQuote(sandboxPath)}`;
       else if (ext === "html") setPreviewHtml(tab.content);
 
       await streamSandboxCommand(cmd, { echo: true, forcePanel: true });
@@ -636,7 +676,17 @@ export default function IDE() {
     const idea = promptWindow("Describe the SaaS app:", "Todo app with auth");
     if (!idea) return;
     appendActivity(`\x1b[38;5;208m→ Generating SaaS scaffold: ${idea}\x1b[0m`);
-    await streamSandboxCommand(`mkdir -p saas && cd saas && printf ${shellQuote(`# ${idea}\n`)} > README.md && npm init -y >/dev/null && echo "Project scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
+    await streamSandboxCommand(`mkdir -p saas/src && cd saas && printf ${shellQuote(`# ${idea}\n`)} > README.md && cat > package.json <<'EOF'
+{"scripts":{"dev":"vite --host 0.0.0.0"},"dependencies":{"@vitejs/plugin-react":"latest","vite":"latest","typescript":"latest","react":"latest","react-dom":"latest"},"devDependencies":{}}
+EOF
+cat > index.html <<'EOF'
+<div id="root"></div><script type="module" src="/src/App.jsx"></script>
+EOF
+cat > src/App.jsx <<'EOF'
+export default function App(){return <main style={{fontFamily:'system-ui',padding:32}}><h1>AxoX app</h1><p>Your AI-built app starts here.</p></main>}
+EOF
+echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
+    await refreshWorkspaceTree();
   };
 
   const onEditorMount: OnMount = (editor, monaco) => {
@@ -695,7 +745,7 @@ export default function IDE() {
   const newTab = () => {
     const name = promptWindow("File name:", `file${tabs.length + 1}.py`);
     if (!name) return;
-    const path = normalizeWorkspacePath(name);
+    const path = resolveExplorerPath(name, explorerRoot);
     setTabs([...tabs, { path, content: "", dirty: true }]);
     setActiveTab(tabs.length);
     setFileTree(treeFromPaths([...fileTree.map((n) => n.path), path]));
@@ -704,26 +754,26 @@ export default function IDE() {
   const newFolder = async () => {
     const name = promptWindow("Folder name:", "src");
     if (!name) return;
-    const path = normalizeWorkspacePath(name);
-    const nextFile = `${path}/index.ts`;
+    const path = resolveExplorerPath(name, explorerRoot);
+    const nextFile = path.startsWith("/") ? `${path}/index.ts` : `${path}/index.ts`;
     setTabs((prev) => [...prev, { path: nextFile, content: "", dirty: true }]);
     setActiveTab(tabs.length);
     setFileTree(treeFromPaths([...fileTree.map((n) => n.path), nextFile]));
     if (sandboxIdRef.current) {
-      await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "mkdir", path: `${HOME_DIR}/${path}` } });
+      await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "mkdir", path: toSandboxPath(path) } });
       await refreshWorkspaceTree();
     }
   };
 
   const openFileFromTree = async (path: string) => {
-    const normalized = normalizeWorkspacePath(path);
-    const existing = tabs.findIndex((t) => normalizeWorkspacePath(t.path) === normalized);
+    const normalized = explorerRoot === "/" ? path : normalizeWorkspacePath(path);
+    const existing = tabs.findIndex((t) => normalizeStoredPath(t.path) === normalizeStoredPath(normalized));
     if (existing >= 0) {
       setActiveTab(existing);
       return;
     }
     if (sandboxIdRef.current) {
-      const { data } = await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "read", path: `${HOME_DIR}/${normalized}` } });
+      const { data } = await supabase.functions.invoke("sandbox-fs", { body: { sandboxId: sandboxIdRef.current, action: "read", path: toSandboxPath(normalized) } });
       setTabs((prev) => [...prev, { path: normalized, content: data?.content || "", dirty: false }]);
       setActiveTab(tabs.length);
     }
@@ -762,6 +812,23 @@ export default function IDE() {
     if (s < 3600) return `${Math.floor(s / 60)}m`;
     return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
   };
+
+  const toggleDir = (path: string) => {
+    setExpandedDirs((prev) => {
+      const next = new Set(prev);
+      next.has(path) ? next.delete(path) : next.add(path);
+      return next;
+    });
+  };
+
+  const visibleTree = fileTree.filter((node) => {
+    const parts = node.path.split("/").filter(Boolean);
+    for (let i = 1; i < parts.length; i++) {
+      const prefix = node.path.startsWith("/") ? `/${parts.slice(0, i).join("/")}` : parts.slice(0, i).join("/");
+      if (!expandedDirs.has(prefix)) return false;
+    }
+    return true;
+  });
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center bg-background text-foreground"><Loader2 className="animate-spin" /></div>;
@@ -845,22 +912,34 @@ export default function IDE() {
         <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-background">
           <div className="flex h-9 items-center justify-between border-b border-border px-3">
             <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><Folder className="h-3.5 w-3.5" /> Explorer</span>
-            <Button size="sm" variant="ghost" onClick={newTab} aria-label="New file"><Plus className="h-4 w-4" /></Button>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="ghost" onClick={() => saveAllWorkspace()} aria-label="Save workspace"><Save className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={() => refreshWorkspaceTree()} aria-label="Refresh files"><RefreshCcw className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={newFolder} aria-label="New folder"><FolderPlus className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={newTab} aria-label="New file"><Plus className="h-4 w-4" /></Button>
+            </div>
+          </div>
+          <div className="flex h-9 items-center gap-1 border-b border-border px-2 text-xs">
+            <Button size="sm" variant={explorerRoot === HOME_DIR ? "secondary" : "ghost"} onClick={() => setExplorerRoot(HOME_DIR)}><Home className="h-3.5 w-3.5" /> Workspace</Button>
+            <Button size="sm" variant={explorerRoot === "/" ? "secondary" : "ghost"} onClick={() => setExplorerRoot("/")}><FolderOpen className="h-3.5 w-3.5" /> Root</Button>
           </div>
           <div className="flex-1 overflow-y-auto py-1">
-            {tabs.map((t, i) => (
-              <button
-                key={`${t.path}-${i}`}
-                onClick={() => setActiveTab(i)}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-secondary ${activeTab === i ? "bg-secondary text-foreground" : "text-muted-foreground"}`}
-              >
-                <FileCode className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{t.path}{t.dirty && " •"}</span>
-                {tabs.length > 1 && (
-                  <X className="h-3.5 w-3.5 shrink-0 hover:text-destructive" onClick={(e) => { e.stopPropagation(); closeTab(i); }} />
-                )}
-              </button>
-            ))}
+            {restoring && <div className="px-3 py-2 text-xs text-muted-foreground">Restoring saved files...</div>}
+            {visibleTree.map((node) => {
+              const active = tabs[activeTab] && comparablePath(tabs[activeTab].path) === comparablePath(node.path);
+              return (
+                <button
+                  key={node.path}
+                  onClick={() => node.type === "dir" ? toggleDir(node.path) : openFileFromTree(node.path)}
+                  className={`flex w-full items-center gap-1 px-2 py-1.5 text-left text-xs hover:bg-secondary ${active ? "bg-secondary text-foreground" : "text-muted-foreground"}`}
+                  style={{ paddingLeft: 8 + node.depth * 14 }}
+                >
+                  {node.type === "dir" ? <ChevronRight className={`h-3 w-3 shrink-0 ${expandedDirs.has(node.path) ? "rotate-90" : ""}`} /> : <span className="w-3" />}
+                  {node.type === "dir" ? <Folder className="h-3.5 w-3.5 shrink-0" /> : <File className="h-3.5 w-3.5 shrink-0" />}
+                  <span className="min-w-0 flex-1 truncate">{node.name}</span>
+                </button>
+              );
+            })}
           </div>
         </aside>
 
@@ -972,7 +1051,9 @@ export default function IDE() {
                 {chat.map((m, i) => (
                   <div key={i} className={`rounded-md border p-3 ${m.role === "user" ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}>
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{m.role === "user" ? "You" : "Copilot"}</div>
-                    <div className="whitespace-pre-wrap text-foreground">{m.content}</div>
+                    <div className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-primary prose-pre:bg-secondary">
+                      <MessageContent content={m.content} />
+                    </div>
                     {m.events && m.events.length > 0 && (
                       <div className="mt-2 space-y-1 border-t border-border pt-2">
                         {m.events.map((ev, j) => (
@@ -1019,6 +1100,7 @@ export default function IDE() {
         <span>{sandboxId ? "AxoX sandbox connected" : "AxoX sandbox will auto-start on first command"}</span>
         <span>{cwd}</span>
         <span className="ml-auto">VS Code-style cloud workspace</span>
+      </div>
 
       {osPickerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setOsPickerOpen(false)}>
@@ -1056,7 +1138,6 @@ export default function IDE() {
           </div>
         </div>
       )}
-    </div>
     </div>
   );
 }
