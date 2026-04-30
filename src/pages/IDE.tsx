@@ -756,7 +756,7 @@ echo "AI app scaffolded at $(pwd)"`, { echo: true, forcePanel: true });
 
   const openFileFromTree = async (path: string) => {
     const normalized = explorerRoot === "/" ? path : normalizeWorkspacePath(path);
-    const existing = tabs.findIndex((t) => normalizeWorkspacePath(t.path) === normalized);
+    const existing = tabs.findIndex((t) => normalizeStoredPath(t.path) === normalizeStoredPath(normalized));
     if (existing >= 0) {
       setActiveTab(existing);
       return;
