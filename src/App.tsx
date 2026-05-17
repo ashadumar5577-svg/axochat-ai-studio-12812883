@@ -10,7 +10,6 @@ import Auth from "./pages/Auth.tsx";
 import Chat from "./pages/Chat.tsx";
 import Admin from "./pages/Admin.tsx";
 import Share from "./pages/Share.tsx";
-import IDE from "./pages/IDE.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -29,7 +28,6 @@ const App = () => (
             <Route path="/chat" element={<Chat />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/share/:token" element={<Share />} />
-            <Route path="/ide" element={<IDE />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
