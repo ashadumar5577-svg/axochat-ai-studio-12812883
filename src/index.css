@@ -1,125 +1,105 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&display=swap');
-
-@font-face {
-  font-family: 'Glacial Indifference';
-  src: url('https://cdn.jsdelivr.net/gh/coollabsio/fonts@main/fonts/glacial-indifference/GlacialIndifference-Regular.otf') format('opentype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Glacial Indifference';
-  src: url('https://cdn.jsdelivr.net/gh/coollabsio/fonts@main/fonts/glacial-indifference/GlacialIndifference-Bold.otf') format('opentype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Glacial Indifference';
-  src: url('https://cdn.jsdelivr.net/gh/coollabsio/fonts@main/fonts/glacial-indifference/GlacialIndifference-Italic.otf') format('opentype');
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Söhne:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root, .dark {
-    /* AxoX dark palette */
-    --background: 20 14% 4%;
-    --foreground: 30 20% 96%;
-
-    --card: 24 12% 7%;
-    --card-foreground: 30 20% 96%;
-
-    --popover: 24 14% 6%;
-    --popover-foreground: 30 20% 96%;
-
-    --primary: 18 95% 60%;
-    --primary-foreground: 20 14% 6%;
-
-    --secondary: 24 10% 12%;
-    --secondary-foreground: 30 15% 90%;
-
-    --muted: 24 8% 14%;
-    --muted-foreground: 25 8% 62%;
-
-    --accent: 14 90% 58%;
-    --accent-foreground: 20 14% 6%;
-
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 30 20% 96%;
-
-    --border: 24 8% 16%;
-    --input: 24 8% 14%;
-    --ring: 18 95% 60%;
-
-    --radius: 0.875rem;
-
-    --gradient-warm: linear-gradient(135deg, hsl(18 95% 62%), hsl(348 85% 60%));
-    --gradient-hero: radial-gradient(ellipse 80% 50% at 50% 0%, hsl(18 70% 22% / 0.55), transparent 70%);
-    --gradient-bg: radial-gradient(ellipse at top, hsl(18 40% 10%), hsl(20 14% 4%) 60%);
-
-    --shadow-glow: 0 10px 40px -10px hsl(18 95% 55% / 0.55);
-    --shadow-soft: 0 8px 30px -8px hsl(0 0% 0% / 0.5);
-
-    --sidebar-background: 24 14% 5%;
-    --sidebar-foreground: 30 12% 80%;
-    --sidebar-primary: 18 95% 60%;
-    --sidebar-primary-foreground: 20 14% 6%;
-    --sidebar-accent: 24 10% 10%;
-    --sidebar-accent-foreground: 30 15% 92%;
-    --sidebar-border: 24 8% 12%;
-    --sidebar-ring: 18 95% 60%;
-  }
-
-  .light {
-    --background: 30 30% 98%;
-    --foreground: 20 14% 8%;
+  /* ChatGPT-style neutral palette */
+  :root, .light {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 20 14% 8%;
+    --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 20 14% 8%;
+    --popover-foreground: 0 0% 9%;
 
-    --primary: 18 95% 55%;
+    --primary: 0 0% 9%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 15% 94%;
-    --secondary-foreground: 20 14% 12%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 30 12% 92%;
-    --muted-foreground: 25 6% 42%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 14 90% 55%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 9%;
 
-    --destructive: 0 72% 50%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 24 10% 88%;
-    --input: 24 10% 90%;
-    --ring: 18 95% 55%;
+    --border: 0 0% 90%;
+    --input: 0 0% 92%;
+    --ring: 0 0% 9%;
 
-    --gradient-warm: linear-gradient(135deg, hsl(18 95% 58%), hsl(348 85% 58%));
-    --gradient-hero: radial-gradient(ellipse 80% 50% at 50% 0%, hsl(18 90% 85% / 0.5), transparent 70%);
-    --gradient-bg: radial-gradient(ellipse at top, hsl(30 40% 96%), hsl(30 30% 98%) 60%);
+    --radius: 0.75rem;
 
-    --shadow-glow: 0 10px 40px -10px hsl(18 95% 50% / 0.35);
-    --shadow-soft: 0 8px 30px -8px hsl(0 0% 0% / 0.12);
+    --gradient-warm: linear-gradient(135deg, hsl(0 0% 20%), hsl(0 0% 9%));
+    --gradient-hero: radial-gradient(ellipse 80% 50% at 50% 0%, hsl(0 0% 95%), transparent 70%);
+    --gradient-bg: hsl(0 0% 100%);
 
-    --sidebar-background: 30 25% 96%;
-    --sidebar-foreground: 20 14% 18%;
-    --sidebar-primary: 18 95% 55%;
+    --shadow-glow: 0 8px 30px -8px hsl(0 0% 0% / 0.18);
+    --shadow-soft: 0 4px 20px -6px hsl(0 0% 0% / 0.08);
+
+    /* Sidebar – ChatGPT light gray */
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 0 0% 18%;
+    --sidebar-primary: 0 0% 9%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 15% 92%;
-    --sidebar-accent-foreground: 20 14% 12%;
-    --sidebar-border: 24 10% 86%;
-    --sidebar-ring: 18 95% 55%;
+    --sidebar-accent: 0 0% 92%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 9%;
+  }
+
+  .dark {
+    /* ChatGPT dark: #212121 bg, #2f2f2f panels, #ececec text */
+    --background: 0 0% 13%;
+    --foreground: 0 0% 93%;
+
+    --card: 0 0% 13%;
+    --card-foreground: 0 0% 93%;
+
+    --popover: 0 0% 16%;
+    --popover-foreground: 0 0% 93%;
+
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 13%;
+
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 93%;
+
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 63%;
+
+    --accent: 0 0% 22%;
+    --accent-foreground: 0 0% 95%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 22%;
+    --input: 0 0% 22%;
+    --ring: 0 0% 80%;
+
+    --gradient-warm: linear-gradient(135deg, hsl(0 0% 30%), hsl(0 0% 18%));
+    --gradient-hero: radial-gradient(ellipse 80% 50% at 50% 0%, hsl(0 0% 20%), transparent 70%);
+    --gradient-bg: hsl(0 0% 13%);
+
+    --shadow-glow: 0 8px 30px -8px hsl(0 0% 0% / 0.5);
+    --shadow-soft: 0 4px 20px -6px hsl(0 0% 0% / 0.3);
+
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 0 0% 80%;
+    --sidebar-primary: 0 0% 95%;
+    --sidebar-primary-foreground: 0 0% 13%;
+    --sidebar-accent: 0 0% 16%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 0 0% 80%;
   }
 }
 
@@ -128,37 +108,31 @@
   html, body, #root { height: 100%; }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Glacial Indifference', 'Sora', 'Inter', system-ui, sans-serif;
+    font-family: 'Söhne', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
     background: var(--gradient-bg);
   }
-  ::selection { background: hsl(var(--primary) / 0.35); color: hsl(var(--foreground)); }
+  ::selection { background: hsl(var(--foreground) / 0.15); color: hsl(var(--foreground)); }
 
-  /* Scrollbars */
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  /* ChatGPT-style thin scrollbars */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }
-  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted)); }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
 }
 
 @layer utilities {
-  /* Brand uses Glacial Indifference everywhere — keep .font-serif as an alias so old usages stay on-brand */
-  .font-serif { font-family: 'Glacial Indifference', 'Sora', 'Inter', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.01em; }
-  .text-gradient {
-    background: var(--gradient-warm);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .bg-gradient-warm { background: var(--gradient-warm); }
+  .font-serif { font-family: 'Söhne', 'Inter', ui-sans-serif, system-ui, sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+  .text-gradient { color: hsl(var(--foreground)); }
+  .bg-gradient-warm { background: hsl(var(--foreground)); color: hsl(var(--background)); }
   .bg-gradient-hero { background: var(--gradient-hero); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
 
   @keyframes fade-in-up {
-    from { opacity: 0; transform: translateY(12px); }
+    from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .animate-fade-in-up { animation: fade-in-up 0.6s ease-out both; }
+  .animate-fade-in-up { animation: fade-in-up 0.25s ease-out both; }
 
   @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
   .cursor-blink::after {
@@ -166,7 +140,6 @@
     animation: blink 1s steps(2) infinite;
   }
 
-  /* Streaming status: subtle dot pulse, no orange bar */
   @keyframes status-dot {
     0%, 100% { opacity: 0.25; transform: translateY(0); }
     50%      { opacity: 1;    transform: translateY(-2px); }
@@ -177,10 +150,18 @@
   .status-dot:nth-child(2) { animation-delay: 0.15s; }
   .status-dot:nth-child(3) { animation-delay: 0.30s; }
 
-  /* Smooth incoming token fade — no jumpy reflow */
   @keyframes token-in { from { opacity: 0; } to { opacity: 1; } }
   .stream-text { animation: token-in 0.18s ease-out both; }
 
-  /* Hide any default top progress bar (just in case) */
-  #nprogress, .top-progress { display: none !important; }
+  /* ChatGPT-style markdown */
+  .prose-chat p { margin: 0.5em 0; }
+  .prose-chat pre { background: hsl(var(--secondary)); border: 1px solid hsl(var(--border)); border-radius: 0.5rem; padding: 0.75rem 1rem; overflow-x: auto; font-size: 0.85em; }
+  .prose-chat code { background: hsl(var(--secondary)); padding: 0.1em 0.35em; border-radius: 0.3rem; font-size: 0.9em; }
+  .prose-chat pre code { background: transparent; padding: 0; }
+  .prose-chat h1, .prose-chat h2, .prose-chat h3 { font-weight: 600; margin: 0.8em 0 0.4em; }
+  .prose-chat ul, .prose-chat ol { margin: 0.5em 0; padding-left: 1.5em; }
+  .prose-chat li { margin: 0.25em 0; }
+  .prose-chat a { color: hsl(var(--foreground)); text-decoration: underline; }
+  .prose-chat table { border-collapse: collapse; margin: 0.5em 0; }
+  .prose-chat th, .prose-chat td { border: 1px solid hsl(var(--border)); padding: 0.35em 0.7em; }
 }
