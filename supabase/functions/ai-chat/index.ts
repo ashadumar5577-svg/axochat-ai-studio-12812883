@@ -26,6 +26,30 @@ Deno.serve(async (req) => {
     if (!providerId || !Array.isArray(messages)) return json({ error: "Invalid body" }, 400);
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Load user memories (ChatGPT-style persistent memory)
+    const { data: memRows } = await admin
+      .from("user_memories")
+      .select("content")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(50);
+    const memories = (memRows ?? []).map((m: any) => m.content).filter(Boolean);
+
+    // Inject system message with memories + identity
+    const systemContent = [
+      "You are AxoX, a helpful, accurate, and concise AI assistant. Format answers with markdown. Use code fences for code. Use $...$ and $$...$$ for math.",
+      memories.length
+        ? `Things you remember about the user (use naturally when relevant, do not list them back):\n- ${memories.join("\n- ")}`
+        : "",
+    ].filter(Boolean).join("\n\n");
+
+    const hasSystem = messages.some((m: any) => m.role === "system");
+    const finalMessages = hasSystem ? messages : [{ role: "system", content: systemContent }, ...messages];
+    // overwrite messages variable scope:
+    (messages as any).length = 0;
+    (messages as any).push(...finalMessages);
+
     const { data: provider, error: provErr } = await admin
       .from("ai_providers")
       .select("*")
